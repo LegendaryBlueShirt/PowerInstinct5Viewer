@@ -5,6 +5,7 @@ import com.justnopoint.util.readShortLe
 import javafx.scene.shape.Rectangle
 import java.io.RandomAccessFile
 
+// Grec chunks contain rectangle data for hitboxes.
 class GrecFile(raf: RandomAccessFile, node: Node) {
     val boxes: List<GrecBoxes>
 

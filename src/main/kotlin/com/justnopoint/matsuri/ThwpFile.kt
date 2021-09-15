@@ -4,6 +4,7 @@ import com.justnopoint.util.readIntLe
 import com.justnopoint.util.readShortLe
 import java.io.RandomAccessFile
 
+// Contains axis information for binding characters correctly during throws.
 class ThwpFile(raf: RandomAccessFile, node: Node) {
     val prefix: String
     val coords = ArrayList<List<Pair<Int, Int>>>()

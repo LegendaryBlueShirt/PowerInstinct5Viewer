@@ -8,5 +8,4 @@ interface FrameDataProvider {
     fun getCharacterSelection(): Property<Character>
     fun getSequences(): Property<ObservableList<Sequence>>
     fun getFrameRenderer(): FrameRenderer
-    fun getObservableProperty(name: String): Property<Boolean>?
 }

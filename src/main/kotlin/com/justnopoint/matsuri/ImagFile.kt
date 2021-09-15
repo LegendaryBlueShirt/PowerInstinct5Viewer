@@ -6,6 +6,8 @@ import ar.com.hjg.pngj.chunks.PngChunkTRNS
 import com.justnopoint.util.readIntLe
 import java.io.*
 
+// Imag chunks contain image data as PNGs.
+// This class also loads Pidx chunks, which contain indexed PNGs.
 class ImagFile {
     val names = ArrayList<String>()
     val tileSheets = ArrayList<ImageLineSetDefault<ImageLineInt>>()

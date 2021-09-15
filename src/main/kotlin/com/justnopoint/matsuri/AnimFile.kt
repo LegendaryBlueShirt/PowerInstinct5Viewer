@@ -7,6 +7,8 @@ import com.justnopoint.matsuri.AnimFile.Companion.SCALE
 import com.justnopoint.util.getIntAt
 import java.io.RandomAccessFile
 
+// Anim chunks contain data for single frames which are one or more sprites
+// put together with additional metadata such as scale, axis, and rotation
 class AnimFile(val raf: RandomAccessFile, node: Node) {
     val names = ArrayList<String>(node.extra)
     val offsets = ArrayList<Long>(node.extra)
@@ -21,7 +23,6 @@ class AnimFile(val raf: RandomAccessFile, node: Node) {
             names.add(n, String(name))
             offsets.add(n, raf.filePointer)
             raf.skipBytes(chunkSize)
-            //println(String(name))
         }
     }
 
@@ -94,6 +95,7 @@ class AnimFile(val raf: RandomAccessFile, node: Node) {
     }
 
     companion object {
+        // Labels for known properties
         const val AXIS = 0x14
         const val ROT = 0x15
         const val SCALE = 0x16

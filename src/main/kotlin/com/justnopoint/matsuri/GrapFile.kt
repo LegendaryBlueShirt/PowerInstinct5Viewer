@@ -7,6 +7,8 @@ import com.justnopoint.util.readShortLe
 import java.awt.image.BufferedImage
 import java.io.RandomAccessFile
 
+// For tiled images, Grap chunks contain the information to
+// piece them together from sheets.
 class GrapFile(private val raf: RandomAccessFile, node: Node, private val sheets: ImagFile) {
     val names = ArrayList<String>(node.extra)
     val offsets = ArrayList<Long>(node.extra)
@@ -97,9 +99,5 @@ class GrapFile(private val raf: RandomAccessFile, node: Node, private val sheets
             return null
         }
         return buildSprite(names.indexOf(name))
-    }
-
-    companion object {
-        const val CHANNELS = 4
     }
 }

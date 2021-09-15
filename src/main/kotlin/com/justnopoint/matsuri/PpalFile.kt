@@ -3,6 +3,7 @@ package com.justnopoint.matsuri
 import com.justnopoint.util.readIntLe
 import java.io.RandomAccessFile
 
+// Ppal chunk contains PNG palettes.  Used with Pidx chunks.
 class PpalFile(raf: RandomAccessFile, node: Node) {
     val names = ArrayList<String>()
     val palettes = ArrayList<ByteArray>()

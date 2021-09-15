@@ -7,6 +7,8 @@ import java.awt.image.*
 import java.io.RandomAccessFile
 import kotlin.collections.HashMap
 
+// Ganm chunks contain definitions for character animation and behavior
+// Data is inlined by a series of key/value pairs with an index table at the top
 class GanmFile(val raf: RandomAccessFile, node: Node) {
     val offsets = HashMap<Int, Long>()
     val prefix: String
@@ -63,7 +65,7 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     anim.add(GanmFrame(raf.readIntLe(), raf.readShortLe(), props))
                     props = HashMap()
                 }
-                9, 13 -> {
+                9, 13, 53, 54 -> {
                     val data = ByteArray(4)
                     raf.read(data)
                     props[mode] = data
@@ -94,13 +96,7 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     raf.read(data)
                     props[mode] = data
                 }
-                53, 54 -> {
-                    val data = ByteArray(4)
-                    raf.read(data)
-                    props[mode] = data
-                }
                 BIND -> { //Throw anchor
-                    //Found in Annie 67 (grab)
                     val frame = raf.readShortLe()
                     val data = ByteArray(16)
                     raf.read(data)

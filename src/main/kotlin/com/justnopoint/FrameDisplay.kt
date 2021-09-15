@@ -40,6 +40,7 @@ class FrameDisplay: Application() {
     lateinit var toggleAxis: CheckMenuItem
     lateinit var toggleDebug: CheckMenuItem
     lateinit var toggleHideKnown: CheckMenuItem
+    lateinit var toggleBinds: CheckMenuItem
 
     companion object {
         const val FPS = 60
@@ -131,21 +132,25 @@ class FrameDisplay: Application() {
                     characterSelect.valueProperty().bindBidirectional(frameData.getCharacterSelection())
                     sequenceSelect.itemsProperty().bind(frameData.getSequences())
 
-                    frameData.getObservableProperty("showBoxes")?.let { bool ->
+                    frameData.getFrameRenderer().getObservableProperty("showBoxes")?.let { bool ->
                         toggleBoxes.selectedProperty().bindBidirectional(bool)
                         toggleBoxes.isDisable = false
                     }
-                    frameData.getObservableProperty("showAxis")?.let { bool ->
+                    frameData.getFrameRenderer().getObservableProperty("showAxis")?.let { bool ->
                         toggleAxis.selectedProperty().bindBidirectional(bool)
                         toggleAxis.isDisable = false
                     }
-                    frameData.getObservableProperty("showDebug")?.let { bool ->
+                    frameData.getFrameRenderer().getObservableProperty("showDebug")?.let { bool ->
                         toggleDebug.selectedProperty().bindBidirectional(bool)
                         toggleDebug.isDisable = false
                     }
-                    frameData.getObservableProperty("hideKnown")?.let { bool ->
+                    frameData.getFrameRenderer().getObservableProperty("hideKnown")?.let { bool ->
                         toggleHideKnown.selectedProperty().bindBidirectional(bool)
                         toggleHideKnown.isDisable = false
+                    }
+                    frameData.getFrameRenderer().getObservableProperty("showBinds")?.let { bool ->
+                        toggleBinds.selectedProperty().bindBidirectional(bool)
+                        toggleBinds.isDisable = false
                     }
 
                     view.rendererProvider = frameData
@@ -196,6 +201,10 @@ class FrameDisplay: Application() {
             toggleHideKnown = CheckMenuItem("Hide Known Debug Values")
             toggleHideKnown.isDisable = true
             viewMenu.items.add(toggleHideKnown)
+
+            toggleBinds = CheckMenuItem("Show Bound Targets In Throws")
+            toggleBinds.isDisable = true
+            viewMenu.items.add(toggleBinds)
 
             menus.addAll(fileMenu, viewMenu)
 
