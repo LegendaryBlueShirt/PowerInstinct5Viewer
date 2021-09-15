@@ -9,7 +9,7 @@ JDK11 or equivalent
 
 MacOs/Unix/Linux
 ```bash
-./gradle run
+./gradlew run
 ```
 
 Windows Command Line
