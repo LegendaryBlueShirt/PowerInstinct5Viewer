@@ -11,10 +11,6 @@ buildscript {
         maven {
             url "https://plugins.gradle.org/m2/"
         }
-        maven {
-            url 'http://dhager.github.io/mvn-repo/releases'
-            allowInsecureProtocol true
-        }
     }
 }
 
@@ -32,14 +28,6 @@ javafx {
     modules = [ 'javafx.controls', 'javafx.swing', 'javafx.fxml' ]
 }
 
-//jfx {
-//    // minimal requirement for jfxJar-task
-//    mainClass = 'com.justnopoint.FrameDisplayKt'
-//
-//    // minimal requirement for jfxNative-task
-//    vendor = 'LegendaryBlueShirt'
-//}
-
 defaultTasks 'run'
 
 repositories {
@@ -48,16 +36,9 @@ repositories {
     maven {
         url "https://plugins.gradle.org/m2/"
     }
-    maven {
-        url 'http://dhager.github.io/mvn-repo/releases'
-        allowInsecureProtocol true
-    }
 }
 
 dependencies {
-    implementation "com.technofovea:hl2parse-binary:1.2.1"
-    implementation "com.technofovea:hl2parse-common:1.2.1"
-    implementation "com.technofovea:hl2parse-parsers:1.2.1"
     implementation "ar.com.hjg:pngj:2.1.0"
     testImplementation group: 'junit', name: 'junit', version: '4.12'
 }
