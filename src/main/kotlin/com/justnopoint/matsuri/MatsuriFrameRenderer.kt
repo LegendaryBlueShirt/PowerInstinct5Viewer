@@ -142,10 +142,11 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                     g.restore()
                 } ?: println("Missing sprite reference ${ref.ref1}")
             }
-            frame.ganmFrame.getEffects().forEach { effect ->
+            frame.ganmFrame.getEffects().reversed().forEach { effect ->
                 val img = effect.toBufferedImage(eff)
+                val scale = frame.ganmFrame.getEffectScale(effect)
                 g.save()
-                g.translate(effect.axisx.toDouble(), effect.axisy.toDouble())
+                g.translate(effect.axisx * scale.first, effect.axisy * scale.second)
                 g.drawImage(
                     SwingFXUtils.toFXImage(img, null),
                     0.0,
@@ -154,8 +155,8 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                     img.height.toDouble(),
                     0.0,
                     0.0,
-                    img.width * (1).toDouble(),
-                    img.height * (1).toDouble()
+                    img.width * scale.first,
+                    img.height * scale.second
                 )
                 g.restore()
             }
@@ -188,7 +189,7 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                     g.translate(coords.first.toDouble(), coords.second.toDouble())
                     g.strokeLine(-2.0, 0.0, 2.0, 0.0)
                     g.strokeLine(0.0, -2.0, 0.0, 2.0)
-                    g.setFont(Font("Helvetica", 5.0));
+                    g.font = Font("Helvetica", 5.0);
                     g.strokeText("$i", -6.0,-6.0)
                     g.restore()
                 }
@@ -209,7 +210,7 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
             g.fillText("Damage ${hitdef.getDamage()}", 90.0, 20.0)
             val plusMinusNF = DecimalFormat("+#;-#")
             val remaining = totalAnimTime - frameTime
-            val hitTime = animFile.getAnim(hitdef.getHitAnim()).sumBy { it.duration }
+            val hitTime = animFile.getAnim(hitdef.getHitAnim()).sumOf { it.duration }
 
             //g.fillText("On Block ${plusMinusNF.format(hitdef.getGuardPause() - remaining)}", 90.0, 40.0)
             g.fillText("On Hit ${plusMinusNF.format(hitTime - remaining)}", 90.0, 60.0)
@@ -231,7 +232,7 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
             var drawx = 20.0
             g.fill = Color(1.0, 1.0, 1.0, 1.0)
             frame.ganmFrame.props.forEach prop@{ (key, value) ->
-                if (hideKnown.get() && GanmFile.knownValues().contains(key)) {
+                if (hideKnown.get() && GanmFile.knownValues().contains(key and 0xFF)) {
                     return@prop
                 }
                 g.fillText("$key ${bytesToHex(value)}", drawx, 320.0)

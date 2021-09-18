@@ -21,11 +21,14 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
         const val ANIM_END = 4
         const val HITDEF = 7
         const val SND = 8
-        const val EFFECT = 17
+        const val EFFECT_BIND = 17
+        const val EFFECT = 50
+        const val EFFECT_FADE_IN = 52
+        const val EFFECT_SCALE = 53
         const val BIND = 56
 
         fun knownValues(): List<Int> {
-            return listOf(LOOP_START, HITDEF, SND, BIND)
+            return listOf(LOOP_START, HITDEF, SND, BIND, EFFECT_BIND, EFFECT, EFFECT_FADE_IN, EFFECT_SCALE)
         }
     }
 
@@ -65,7 +68,7 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     anim.add(GanmFrame(raf.readIntLe(), raf.readShortLe(), props))
                     props = HashMap()
                 }
-                9, 13, 53, 54 -> {
+                9, 13, EFFECT_SCALE, 54 -> {
                     val data = ByteArray(4)
                     raf.read(data)
                     props[mode] = data
@@ -75,7 +78,7 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     raf.read(data)
                     props[mode] = data
                 }
-                EFFECT -> { // Generate effect?
+                EFFECT_BIND -> { // Generate effect?
                     val data = ByteArray(10) //Wrong for Annie 74
                     raf.read(data)
                     props[mode] = data
@@ -86,12 +89,12 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     raf.read(data)
                     props[mode] = data
                 }
-                50 -> {
+                EFFECT -> {
                     val data = ByteArray(16)
                     raf.read(data)
                     props[mode] = data
                 }
-                HITDEF, SND, 22, 40, 51, 52 -> {
+                HITDEF, SND, 22, 40, 51, EFFECT_FADE_IN -> {
                     val data = ByteArray(2)
                     raf.read(data)
                     props[mode] = data
@@ -125,26 +128,36 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
 
 data class GanmFrame(val frame: Int, val duration: Int, val props: HashMap<Int, ByteArray>)
 
-data class Effect(val axisx: Int, val axisy: Int, val sx: Int, val sy: Int, val sw: Int, val sh: Int, val unk1: Int, val source: Int)
+data class Effect(val index: Int, val axisx: Int, val axisy: Int, val sx: Int, val sy: Int, val sw: Int, val sh: Int, val unk1: Int, val source: Int)
 data class Helper(val ref: Int, val x: Int, val y: Int)
 data class Bind(val frame: Int, val anchorPoint: Int, val axisx: Int, val axisy: Int)
 
 fun GanmFrame.getHelperSpawn(): Helper? {
-    if(!props.containsKey(GanmFile.EFFECT)) {
+    if(!props.containsKey(GanmFile.EFFECT_BIND)) {
         return null
     }
-    val data = props[GanmFile.EFFECT]!!
+    val data = props[GanmFile.EFFECT_BIND]!!
     return Helper(data.getShortAt(2), data.getShortAt(4), data.getShortAt(6))
 }
 
 fun GanmFrame.getEffects(): List<Effect> {
-    return props.entries.filter { it.key and 0xFF == 0x32 }.map { entry ->
+    return props.entries.filter { it.key and 0xFF == GanmFile.EFFECT }.map { entry ->
         val data = entry.value
-        Effect(data.getShortAt(0).toShort().toInt(), data.getShortAt(2).toShort().toInt(),
+        Effect(entry.key ushr 8,
+            data.getShortAt(0).toShort().toInt(), data.getShortAt(2).toShort().toInt(),
             data.getShortAt(4), data.getShortAt(6),
             data.getShortAt(8), data.getShortAt(10),
             data.getShortAt(12), data.getShortAt(14))
     }
+}
+
+fun GanmFrame.getEffectScale(effect: Effect): Pair<Double, Double> {
+    val key = (effect.index shl 8) or GanmFile.EFFECT_SCALE
+    if(!props.containsKey(key)) {
+        return Pair(1.0, 1.0)
+    }
+    val data = props[key]!!
+    return Pair(data.getShortAt(0)/256.0, data.getShortAt(2)/256.0)
 }
 
 fun GanmFrame.getBoundEnemy(): Bind? {
