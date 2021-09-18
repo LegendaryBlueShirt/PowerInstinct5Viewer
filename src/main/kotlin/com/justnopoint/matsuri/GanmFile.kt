@@ -26,9 +26,11 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
         const val EFFECT_FADE_IN = 52
         const val EFFECT_SCALE = 53
         const val BIND = 56
+        const val ARMOR = 58
+        const val AFTERIMAGES = 59
 
         fun knownValues(): List<Int> {
-            return listOf(LOOP_START, HITDEF, SND, BIND, EFFECT_BIND, EFFECT, EFFECT_FADE_IN, EFFECT_SCALE)
+            return listOf(LOOP_START, HITDEF, SND, BIND, EFFECT_BIND, EFFECT, EFFECT_FADE_IN, EFFECT_SCALE, ARMOR, AFTERIMAGES)
         }
     }
 
@@ -107,9 +109,6 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     anim.add(GanmFrame(frame, raf.readShortLe(), props))
                     props = HashMap()
                 }
-                LOOP_START, 24, 38, 44 -> {
-                    props[mode] = ByteArray(0)
-                }
                 else -> {
                     props[mode] = ByteArray(0)
                 }
@@ -166,6 +165,14 @@ fun GanmFrame.getBoundEnemy(): Bind? {
     }
     val data = props[GanmFile.BIND]!!
     return Bind(data.getShortAt(0), data.getShortAt(2), data.getShortAt(4).toShort().toInt(), data.getShortAt(6).toShort().toInt())
+}
+
+fun GanmFrame.getArmor(): Boolean? {
+    return props.entries.find { it.key and 0xFF == GanmFile.ARMOR }?.let { it.key ushr 8 and 0xFF != 0 }
+}
+
+fun GanmFrame.getAfterimage(): Boolean? {
+    return props.entries.find { it.key and 0xFF == GanmFile.AFTERIMAGES }?.let { it.key ushr 8 and 0xFF != 0 }
 }
 
 fun Effect.toBufferedImage(sheets: ImagFile): BufferedImage {

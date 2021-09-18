@@ -216,6 +216,15 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
             g.fillText("On Hit ${plusMinusNF.format(hitTime - remaining)}", 90.0, 60.0)
         }
 
+        frame.ganmFrame.getArmor()?.let {
+            g.fill = Color(1.0, 1.0, 1.0, 1.0)
+            if(it) {
+                g.fillText("Armor Disabled", 160.0, 20.0)
+            } else {
+                g.fillText("Armor Enabled", 160.0, 20.0)
+            }
+        }
+
         frame.ganmFrame.getHelperSpawn()?.let {
             g.save()
             g.translate(axisX.toDouble(), axisY.toDouble())
