@@ -83,7 +83,7 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
         val effraf = if(effectFile.exists()) RandomAccessFile(effectFile, "r") else null
 
         renderer = MatsuriFrameRenderer(raf, effraf)
-        sequences.value = FXCollections.observableList(renderer.animFile.offsets.entries.distinctBy { it.value }.map { MatsuriSequence(it.key, renderer.animFile.getAnim(it.key)) })
+        sequences.value = FXCollections.observableList(renderer.animFile.offsets.entries.reversed().distinctBy { it.value }.reversed().map { MatsuriSequence(it.key, renderer.animFile.getAnim(it.key)) })
     }
 
     override fun getSequences(): Property<ObservableList<Sequence>> {
@@ -123,7 +123,6 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
                 put(9, "Jump Fall")
                 put(10, "Jump Forward")
                 put(11, "Jump Back")
-                put(13, "Jump Land Neutral")
                 put(14, "Jump Land Neutral")
                 put(15, "Jump Land Turn")
                 put(16, "Guard A Start")
@@ -143,7 +142,9 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
                 put(30, "Guard C Heavy End")
                 put(31, "Run")
                 put(33, "Backdash")
-                put(36, "5A (close)")
+                put(34, "Backdash Land")
+                put(35, "Run Stop")
+                put(37, "5A (close)")
                 put(38, "5A (far)")
                 put(39, "5C (close)")
                 put(40, "5C (far)")
@@ -172,7 +173,7 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
                 put(135, "Lose")
                 put(141, "Hit High Lightest")
                 put(145, "Hit High Lightest?")
-                put(147, "Hit High Lightest??") //0
+                put(147, "Hit High Lightest") //0
                 put(148, "Hit High Light")  //2
                 put(149, "Hit High Medium") //4
                 put(150, "Hit High Heavy") //6

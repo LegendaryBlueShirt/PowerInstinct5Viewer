@@ -10,6 +10,9 @@ import javafx.embed.swing.SwingFXUtils
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
+import javafx.scene.text.FontPosture
+import javafx.scene.text.FontWeight
+import javafx.scene.text.Text
 import java.io.RandomAccessFile
 import java.text.DecimalFormat
 
@@ -126,6 +129,7 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                     val frameAxisX = (frameFile.getXAxis(ref))
                     val frameAxisY = (frameFile.getYAxis(ref))
                     g.save()
+                    g.globalAlpha = frameFile.getOpacity(ref)
                     g.translate(frameAxisX.toDouble(), frameAxisY.toDouble())
                     g.rotate(frameFile.getRotation(ref).toDouble())
                     g.drawImage(
@@ -170,6 +174,7 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
             return
         }
         g.save()
+        g.font = Font.font(getMonospaceFonts()[0])
         if (showAxis.get()) {
             g.save()
             g.translate(axisX.toDouble(), axisY.toDouble())
@@ -203,26 +208,43 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
         g.fillText("Duration ${frame.getDuration()}", 20.0, 40.0)
 
         frame.ganmFrame.props[GanmFile.HITDEF]?.getShortAt(0)?.let(gatkFile::getHitdef)?.let { hitdef ->
-            g.fill = Color(1.0, 0.0, 0.0, 1.0)
             if(showDebug.get()) {
-                g.fillText("Hitdef ${bytesToHex(hitdef.data)}", 20.0, 80.0)
+                g.fillText("Hitdef ${bytesToHex(hitdef.data)}", 20.0, 100.0)
             }
-            g.fillText("Damage ${hitdef.getDamage()}", 90.0, 20.0)
+            g.fillText("Damage ${hitdef.getDamage()}", 110.0, 20.0)
             val plusMinusNF = DecimalFormat("+#;-#")
             val remaining = totalAnimTime - frameTime
             val hitTime = animFile.getAnim(hitdef.getHitAnim()).sumOf { it.duration }
 
-            //g.fillText("On Block ${plusMinusNF.format(hitdef.getGuardPause() - remaining)}", 90.0, 40.0)
-            g.fillText("On Hit ${plusMinusNF.format(hitTime - remaining)}", 90.0, 60.0)
+            g.fillText("Guard | L | H | A |", 110.0, 40.0)
+
+            g.fillText("      | ${if(hitdef.isLowUnblockable()) 'X' else 'O'} | ${if(hitdef.isHighUnblockable()) 'X' else 'O'} | ${if(hitdef.isAirUnblockable()) 'X' else 'O'} |", 110.0, 60.0)
+            g.fillText("On Hit ${plusMinusNF.format(hitTime - remaining)}", 110.0, 80.0)
         }
 
+        val propslist = mutableListOf<String>()
         frame.ganmFrame.getArmor()?.let {
-            g.fill = Color(1.0, 1.0, 1.0, 1.0)
-            if(it) {
-                g.fillText("Armor Disabled", 160.0, 20.0)
-            } else {
-                g.fillText("Armor Enabled", 160.0, 20.0)
-            }
+            if(it) "Armor Enabled" else "Armor Disabled"
+        }?.run(propslist::add)
+
+        frame.ganmFrame.getCancel()?.let {
+            if(it) "Cancel Window" else "Cancelling Disabled"
+        }?.run(propslist::add)
+
+        frame.ganmFrame.getInvulnerability()?.let {
+            if(it) "Invulnerable" else "Invuln Disabled"
+        }?.run(propslist::add)
+
+        frame.ganmFrame.getGravity()?.let {
+            "Gravity Enabled"
+        }?.run(propslist::add)
+
+        frame.ganmFrame.getSound()?.let {
+            "Play Sound ${bytesToHex(it)}"
+        }?.run(propslist::add)
+
+        propslist.forEachIndexed { index, string ->
+            g.fillText(string, 260.0, 20.0 + 20.0 * index)
         }
 
         frame.ganmFrame.getHelperSpawn()?.let {
@@ -259,7 +281,7 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                     var posx = 210.0
                     g.fillText("${ref.ref1} ${ref.ref2} ${bytesToHex(ref.head)}", 20.0, posy)
                     ref.props.entries.forEach prop@{ (key, value) ->
-                        if (hideKnown.get() && listOf(AnimFile.ROT, AnimFile.SCALE, AnimFile.AXIS).contains(key)) {
+                        if (hideKnown.get() && listOf(AnimFile.ROT, AnimFile.SCALE, AnimFile.AXIS, AnimFile.RGBA_ADJUST).contains(key)) {
                             return@prop
                         }
                         g.fillText("${key}-${bytesToHex(value)}", posx, posy)
@@ -315,5 +337,22 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
             hexChars[j * 2 + 1] = hexArray[v and 0x0F]
         }
         return String(hexChars)
+    }
+
+    fun getMonospaceFonts(): List<String> {
+        val thinTxt = Text("1 l")
+        val thickTxt = Text("MWX")
+
+        val fontFamilyList = Font.getFamilies()
+        val monospacedFonts = mutableListOf<String>()
+        fontFamilyList.forEach {
+            val font = Font.font(it, FontWeight.NORMAL, FontPosture.REGULAR, 14.0)
+            thinTxt.font = font
+            thickTxt.font = font
+            if(thinTxt.layoutBounds.width == thickTxt.layoutBounds.width) {
+                monospacedFonts.add(it)
+            }
+        }
+        return monospacedFonts
     }
 }

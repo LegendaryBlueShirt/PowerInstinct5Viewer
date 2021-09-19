@@ -1,9 +1,6 @@
 package com.justnopoint.matsuri
 
 import com.justnopoint.util.readIntLe
-import com.justnopoint.matsuri.AnimFile.Companion.AXIS
-import com.justnopoint.matsuri.AnimFile.Companion.ROT
-import com.justnopoint.matsuri.AnimFile.Companion.SCALE
 import com.justnopoint.util.getIntAt
 import java.io.RandomAccessFile
 
@@ -69,6 +66,15 @@ class AnimFile(val raf: RandomAccessFile, node: Node) {
         return Float.fromBits(data.getIntAt(0))
     }
 
+    fun getOpacity(frame: RefSpr): Double {
+        if(!frame.props.containsKey(RGBA_ADJUST)) {
+            return 1.0
+        }
+        val data = frame.props[RGBA_ADJUST]!!
+
+        return (data[3].toInt() and 0xFF) / 255.0
+    }
+
     fun getAnimFrame(name: String?): AnimFrame? {
         if(name == null) {
             return null
@@ -99,6 +105,7 @@ class AnimFile(val raf: RandomAccessFile, node: Node) {
         const val AXIS = 0x14
         const val ROT = 0x15
         const val SCALE = 0x16
+        const val RGBA_ADJUST = 0x1E
     }
 }
 
@@ -114,10 +121,10 @@ fun RandomAccessFile.readRef(): RefSpr {
     val props = (0 until propCount).associate {
         val key = readUnsignedByte()
         val value = when(key) {
-            AXIS -> ByteArray(8)
-            ROT -> ByteArray(4)
-            SCALE -> ByteArray(8)
-            0x1E -> ByteArray(4)
+            AnimFile.AXIS -> ByteArray(8)
+            AnimFile.ROT -> ByteArray(4)
+            AnimFile.SCALE -> ByteArray(8)
+            AnimFile.RGBA_ADJUST -> ByteArray(4)
             0x28 -> ByteArray(1)
             0x46 -> ByteArray(1)
             0x32 -> ByteArray(2)
