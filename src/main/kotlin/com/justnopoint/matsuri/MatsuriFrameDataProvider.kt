@@ -48,7 +48,7 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
         return characters
     }
 
-    lateinit var renderer: MatsuriFrameRenderer
+    var renderer = SimpleObjectProperty<MatsuriFrameRenderer>(this, "renderer")
 
     var currentChar = SimpleObjectProperty<Character>(this, "character", characters[0])
     var palette = SimpleIntegerProperty(this, "palette", 0)
@@ -82,8 +82,9 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
         val effectFile = File(effectFolder, character.getEffectFile())
         val effraf = if(effectFile.exists()) RandomAccessFile(effectFile, "r") else null
 
-        renderer = MatsuriFrameRenderer(raf, effraf)
-        sequences.value = FXCollections.observableList(renderer.animFile.offsets.entries.reversed().distinctBy { it.value }.reversed().map { MatsuriSequence(it.key, renderer.animFile.getAnim(it.key)) })
+        val newRenderer = MatsuriFrameRenderer(raf, effraf)
+        sequences.value = FXCollections.observableList(newRenderer.animFile.offsets.entries.reversed().distinctBy { it.value }.reversed().map { MatsuriSequence(it.key, newRenderer.animFile.getAnim(it.key)) })
+        renderer.set(newRenderer)
     }
 
     override fun getSequences(): Property<ObservableList<Sequence>> {
@@ -91,7 +92,7 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
     }
 
     override fun getFrameRenderer(): FrameRenderer {
-        return renderer
+        return renderer.get()
     }
 
     class MatsuriCharacter(val fullname: String, val tag: String): Character() {

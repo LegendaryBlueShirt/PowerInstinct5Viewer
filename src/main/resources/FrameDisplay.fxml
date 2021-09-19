@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<?import com.justnopoint.ViewerWindow?>
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.justnopoint.FrameDisplayController"
+      prefHeight="600.0" prefWidth="800.0">
+    <children>
+        <MenuBar fx:id="menuBar">
+            <menus>
+                <Menu text="File">
+                    <items>
+                        <MenuItem text="Load Directory" onAction="#showDirectoryChooser"/>
+                    </items>
+                </Menu>
+                <Menu text="View">
+                    <items>
+                        <MenuItem text="Reset Position" onAction="#resetPosition"/>
+                        <CheckMenuItem text="Animate" fx:id="animate"/>
+                        <CheckMenuItem text="Show Boxes" fx:id="toggleBoxes"/>
+                        <CheckMenuItem text="Show Axis" fx:id="toggleAxis"/>
+                        <CheckMenuItem text="Show Debug Information" fx:id="toggleDebug"/>
+                        <CheckMenuItem text="Hide Known Debug Values" fx:id="toggleHideKnown"/>
+                        <CheckMenuItem text="Show Bound Targets In Throws" fx:id="toggleBinds"/>
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+        <BorderPane>
+            <top>
+                <HBox fx:id="topMenu">
+                    <children>
+                        <ComboBox fx:id="characterSelect"/>
+                        <ComboBox fx:id="sequenceSelect"/>
+                    </children>
+                </HBox>
+            </top>
+            <center>
+                <Pane>
+                    <children>
+                        <ViewerWindow fx:id="view"/>
+                    </children>
+                </Pane>
+            </center>
+        </BorderPane>
+    </children>
+</VBox>
