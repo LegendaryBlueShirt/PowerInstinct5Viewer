@@ -44,7 +44,8 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
         MatsuriCharacter("Otane Goketsuji (Young)", "st"),
         MatsuriCharacter("Oume Goketsuji (Young)", "su"),
         MatsuriCharacter("Chinnen", "tn"),
-        MatsuriCharacter("White Buffalo", "wb")
+        MatsuriCharacter("White Buffalo", "wb"),
+        MatsuriCharacter("Common Effect", "common")
     )
 
     override fun getCharacters(): List<Character> {
@@ -83,12 +84,17 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
         }
 
         val charaFile = File(charaFolder, character.getFile(palette.get()))
-        val raf = RandomAccessFile(charaFile, "r")
+
 
         val effectFile = File(effectFolder, character.getEffectFile())
         val effraf = if(effectFile.exists()) RandomAccessFile(effectFile, "r") else null
 
-        val newRenderer = MatsuriFrameRenderer(raf, effraf, hanyou)
+        val newRenderer = if(charaFile.exists()) {
+            val raf = RandomAccessFile(charaFile, "r")
+            MatsuriFrameRenderer(raf, effraf, hanyou)
+        } else {
+            MatsuriFrameRenderer(effraf!!, null, hanyou)
+        }
         sequences.value = FXCollections.observableList(newRenderer.animFile.offsets.entries.reversed().distinctBy { it.value }.reversed().map { MatsuriSequence(it.key, newRenderer.animFile.getAnim(it.key)) })
         renderer.set(newRenderer)
     }
