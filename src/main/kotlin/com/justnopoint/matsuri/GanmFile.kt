@@ -31,6 +31,7 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
         const val CANCEL = 24
         const val POSADD_Y = 40
         const val EFFECT = 50
+        const val EFFECT_ROTATE = 51
         const val EFFECT_FADE_IN = 52
         const val EFFECT_SCALE = 53
         const val BIND = 56
@@ -38,7 +39,9 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
         const val AFTERIMAGES = 59
 
         fun knownValues(): List<Int> {
-            return listOf(LOOP_START, HITDEF, SND, BIND, EFFECT_BIND, EFFECT, EFFECT_FADE_IN, EFFECT_SCALE, CANCEL, ARMOR, AFTERIMAGES, VEL_X, VEL_X_AND_Y, POSADD_X, POSADD_Y, INVULNERABILITY)
+            return listOf(LOOP_START, HITDEF, SND, BIND, EFFECT_BIND, EFFECT, EFFECT_ROTATE, GRAVITY,
+                EFFECT_FADE_IN, EFFECT_SCALE, CANCEL, ARMOR, AFTERIMAGES, VEL_X, VEL_X_AND_Y,
+                POSADD_X, POSADD_Y, INVULNERABILITY)
         }
     }
 
@@ -78,12 +81,12 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     anim.add(GanmFrame(raf.readIntLe(), raf.readShortLe(), props))
                     props = HashMap()
                 }
-                VEL_X, 13, EFFECT_SCALE, 54 -> {
+                VEL_X, 13, 14, EFFECT_SCALE, 54 -> {
                     val data = ByteArray(4)
                     raf.read(data)
                     props[mode] = data
                 }
-                12, 16 -> {
+                VEL_X_AND_Y, 16 -> {
                     val data = ByteArray(12)
                     raf.read(data)
                     props[mode] = data
@@ -94,17 +97,18 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
                     props[mode] = data
                 }
                 29 -> { //Unknown behavior
-                    //Found in Annie anim 79
+                    //29 Found in Annie anim 79
                     val data = ByteArray(18)
                     raf.read(data)
                     props[mode] = data
                 }
-                EFFECT -> {
+                27, EFFECT -> {
+                    //27 Found in Annie anim 116
                     val data = ByteArray(16)
                     raf.read(data)
                     props[mode] = data
                 }
-                HITDEF, SND, POSADD_X, 40, 51, EFFECT_FADE_IN -> {
+                HITDEF, SND, POSADD_X, POSADD_Y, EFFECT_ROTATE, EFFECT_FADE_IN -> {
                     val data = ByteArray(2)
                     raf.read(data)
                     props[mode] = data
@@ -148,7 +152,7 @@ fun GanmFrame.getHelperSpawn(): Helper? {
         return null
     }
     val data = props[GanmFile.EFFECT_BIND]!!
-    return Helper(data.getShortAt(2), data.getShortAt(4), data.getShortAt(6))
+    return Helper(data.getShortAt(2), data.getShortAt(4).toShort().toInt(), data.getShortAt(6).toShort().toInt())
 }
 
 fun GanmFrame.getEffects(): List<Effect> {
@@ -169,6 +173,15 @@ fun GanmFrame.getEffectScale(effect: Effect): Pair<Double, Double> {
     }
     val data = props[key]!!
     return Pair(data.getShortAt(0)/256.0, data.getShortAt(2)/256.0)
+}
+
+fun GanmFrame.getEffectRotation(effect: Effect): Double {
+    val key = (effect.index shl 8) or GanmFile.EFFECT_ROTATE
+    if(!props.containsKey(key)) {
+        return 0.0
+    }
+    val data = props[key]!!
+    return data.getShortAt(0) * 1.0
 }
 
 fun GanmFrame.getBoundEnemy(): Bind? {
@@ -243,9 +256,11 @@ fun GanmFrame.getVelY(): Int? {
     }
 }
 
-fun Effect.toBufferedImage(sheets: ImagFile): BufferedImage {
+fun Effect.toBufferedImage(sheets: ImagFile, hanyou: ImagFile): BufferedImage {
     val sourceIndex = source-1
-    val sheet = sheets.getSheet(sourceIndex)?:return BufferedImage(1,1,BufferedImage.TYPE_INT_ARGB)
+    println(sourceIndex)
+    // This works for Annie but probably needs tweaking, or we're missing entire sheets
+    val sheet = sheets.getSheet(sourceIndex)?:hanyou.getSheet(sourceIndex-4)?:return BufferedImage(1,1,BufferedImage.TYPE_INT_ARGB)
     return BufferedImage(sw, sh, BufferedImage.TYPE_INT_ARGB).apply {
         val raster = raster
         val plte = if(sheet.getImageLine(0).imgInfo.indexed) {

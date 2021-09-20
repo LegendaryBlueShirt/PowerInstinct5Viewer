@@ -16,7 +16,7 @@ import javafx.scene.text.Text
 import java.io.RandomAccessFile
 import java.text.DecimalFormat
 
-class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile?): FrameRenderer {
+class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile?, val hanyou: ImagFile): FrameRenderer {
     var showBoxes = SimpleBooleanProperty(this, "showBoxes", true)
     var showDebug = SimpleBooleanProperty(this, "showDebug", true)
     var hideKnown = SimpleBooleanProperty(this, "hideKnown", false)
@@ -93,37 +93,37 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
         g.scale(zoom, zoom)
 
         val name = "${animFile.prefix}${frame.ganmFrame.frame}"
-        frameFile.getAnimFrame(name)?.let { animFrame ->
-            if(showBinds.get()) {
-                frame.ganmFrame.getBoundEnemy()?.let {
-                    val bindName = "${animFile.prefix}${it.frame}"
-                    frameFile.getAnimFrame(bindName)?.let { bindFrame ->
-                        grapFile.getSprite(bindFrame.refs[0].ref1)?.let { sprite ->
-                            val anchor = thwpFile.getCoords(it.frame - 9000)[it.anchorPoint]
-                            val frameAxisX = (frameFile.getXAxis(bindFrame.refs[0]))
-                            val frameAxisY = (frameFile.getYAxis(bindFrame.refs[0]))
-                            println("${anchor.first},${anchor.second}  ${it.axisx},${it.axisy}  $frameAxisX,$frameAxisY")
-                            g.save()
-                            g.translate(
-                                it.axisx.toDouble() - (frameAxisX - anchor.first),
-                                it.axisy.toDouble() + (frameAxisY - anchor.second)
-                            )
-                            g.drawImage(
-                                SwingFXUtils.toFXImage(sprite, null),
-                                0.0,
-                                0.0,
-                                sprite.width.toDouble(),
-                                sprite.height.toDouble(),
-                                0.0,
-                                0.0,
-                                sprite.width * (-1).toDouble(),
-                                sprite.height.toDouble()
-                            )
-                            g.restore()
-                        } ?: println("Missing sprite reference ${bindFrame.refs[0].ref1}")
-                    }
+        if(showBinds.get()) {
+            frame.ganmFrame.getBoundEnemy()?.let {
+                val bindName = "${animFile.prefix}${it.frame}"
+                frameFile.getAnimFrame(bindName)?.let { bindFrame ->
+                    grapFile.getSprite(bindFrame.refs[0].ref1)?.let { sprite ->
+                        val anchor = thwpFile.getCoords(it.frame - 9000)[it.anchorPoint]
+                        val frameAxisX = (frameFile.getXAxis(bindFrame.refs[0]))
+                        val frameAxisY = (frameFile.getYAxis(bindFrame.refs[0]))
+                        println("${anchor.first},${anchor.second}  ${it.axisx},${it.axisy}  $frameAxisX,$frameAxisY")
+                        g.save()
+                        g.translate(
+                            it.axisx.toDouble() - (frameAxisX - anchor.first),
+                            it.axisy.toDouble() + (frameAxisY - anchor.second)
+                        )
+                        g.drawImage(
+                            SwingFXUtils.toFXImage(sprite, null),
+                            0.0,
+                            0.0,
+                            sprite.width.toDouble(),
+                            sprite.height.toDouble(),
+                            0.0,
+                            0.0,
+                            sprite.width * (-1).toDouble(),
+                            sprite.height.toDouble()
+                        )
+                        g.restore()
+                    } ?: println("Missing sprite reference ${bindFrame.refs[0].ref1}")
                 }
             }
+        }
+        frameFile.getAnimFrame(name)?.let { animFrame ->
             for (ref in animFrame.refs.reversed()) {
                 grapFile.getSprite(ref.ref1)?.let { sprite ->
                     val frameAxisX = (frameFile.getXAxis(ref))
@@ -146,24 +146,26 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                     g.restore()
                 } ?: println("Missing sprite reference ${ref.ref1}")
             }
-            frame.ganmFrame.getEffects().reversed().forEach { effect ->
-                val img = effect.toBufferedImage(eff)
-                val scale = frame.ganmFrame.getEffectScale(effect)
-                g.save()
-                g.translate(effect.axisx * scale.first, effect.axisy * scale.second)
-                g.drawImage(
-                    SwingFXUtils.toFXImage(img, null),
-                    0.0,
-                    0.0,
-                    img.width.toDouble(),
-                    img.height.toDouble(),
-                    0.0,
-                    0.0,
-                    img.width * scale.first,
-                    img.height * scale.second
-                )
-                g.restore()
-            }
+        }
+        frame.ganmFrame.getEffects().reversed().forEach { effect ->
+            val img = effect.toBufferedImage(eff, hanyou)
+            val scale = frame.ganmFrame.getEffectScale(effect)
+            val rotation = frame.ganmFrame.getEffectRotation(effect)
+            g.save()
+            g.rotate(rotation)
+            g.translate(effect.axisx * scale.first, effect.axisy * scale.second)
+            g.drawImage(
+                SwingFXUtils.toFXImage(img, null),
+                0.0,
+                0.0,
+                img.width.toDouble(),
+                img.height.toDouble(),
+                0.0,
+                0.0,
+                img.width * scale.first,
+                img.height * scale.second
+            )
+            g.restore()
         }
 
         g.restore()
@@ -223,6 +225,19 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
         }
 
         val propslist = mutableListOf<String>()
+        frame.ganmFrame.getHelperSpawn()?.let {
+            g.save()
+            g.translate(axisX.toDouble(), axisY.toDouble())
+            g.scale(zoom, zoom)
+            g.translate(it.x.toDouble(), -it.y.toDouble())
+            g.stroke = Color(1.0, 1.0, 0.0, 1.0)
+            g.fill = Color(1.0, 1.0, 0.0, 1.0)
+            g.strokeLine(-2.0, 0.0, 2.0, 0.0)
+            g.strokeLine(0.0, -2.0, 0.0, 2.0)
+            g.restore()
+            propslist.add("Spawn Entity ${it.ref} at ${it.x.toDouble()},${-it.y.toDouble()}")
+        }
+
         frame.ganmFrame.getArmor()?.let {
             if(it) "Armor Enabled" else "Armor Disabled"
         }?.run(propslist::add)
@@ -247,18 +262,6 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
             g.fillText(string, 260.0, 20.0 + 20.0 * index)
         }
 
-        frame.ganmFrame.getHelperSpawn()?.let {
-            g.save()
-            g.translate(axisX.toDouble(), axisY.toDouble())
-            g.scale(zoom, zoom)
-            g.translate(it.x.toDouble(), -it.y.toDouble())
-            g.stroke = Color(0.5, 0.5, 0.0, 1.0)
-            g.fill = Color(0.5, 0.5, 0.0, 1.0)
-            g.strokeLine(-2.0, 0.0, 2.0, 0.0)
-            g.strokeLine(0.0, -2.0, 0.0, 2.0)
-            g.restore()
-        }
-
         if(showDebug.get()) {
             var drawx = 20.0
             g.fill = Color(1.0, 1.0, 1.0, 1.0)
@@ -278,7 +281,7 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                 g.fillText("$name ${bytesToHex(data.head)}", 20.0, 350.0)
                 var posy = 380.0
                 for (ref in data.refs) {
-                    var posx = 210.0
+                    var posx = 240.0
                     g.fillText("${ref.ref1} ${ref.ref2} ${bytesToHex(ref.head)}", 20.0, posy)
                     ref.props.entries.forEach prop@{ (key, value) ->
                         if (hideKnown.get() && listOf(AnimFile.ROT, AnimFile.SCALE, AnimFile.AXIS, AnimFile.RGBA_ADJUST).contains(key)) {

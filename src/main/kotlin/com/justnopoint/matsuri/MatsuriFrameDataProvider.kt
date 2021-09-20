@@ -9,6 +9,9 @@ import java.io.File
 import java.io.RandomAccessFile
 
 class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider {
+    private val effectFolder = File(matsuriHome, "effect")
+    private val charaFolder = File(matsuriHome, "chara")
+
     private val characters = listOf(
         MatsuriCharacter("Annie Hamilton", "ah"),
         MatsuriCharacter("Angela Belti", "an"),
@@ -49,10 +52,15 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
     }
 
     var renderer = SimpleObjectProperty<MatsuriFrameRenderer>(this, "renderer")
-
     var currentChar = SimpleObjectProperty<Character>(this, "character", characters[0])
     var palette = SimpleIntegerProperty(this, "palette", 0)
     var sequences = SimpleListProperty<Sequence>(this, "sequences")
+
+    private var hanyou = ImagFile().apply {
+        val hanyouRaf = RandomAccessFile(File(effectFolder, "hanyou.vsa"), "r")
+        load(hanyouRaf, VsaFile(hanyouRaf).getNode(VsaFile.IMAG)!!)
+        hanyouRaf.close()
+    }
 
     init {
         palette.addListener { _ ->
@@ -74,15 +82,13 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
             return
         }
 
-        val charaFolder = File(matsuriHome, "chara")
         val charaFile = File(charaFolder, character.getFile(palette.get()))
         val raf = RandomAccessFile(charaFile, "r")
 
-        val effectFolder = File(matsuriHome, "effect")
         val effectFile = File(effectFolder, character.getEffectFile())
         val effraf = if(effectFile.exists()) RandomAccessFile(effectFile, "r") else null
 
-        val newRenderer = MatsuriFrameRenderer(raf, effraf)
+        val newRenderer = MatsuriFrameRenderer(raf, effraf, hanyou)
         sequences.value = FXCollections.observableList(newRenderer.animFile.offsets.entries.reversed().distinctBy { it.value }.reversed().map { MatsuriSequence(it.key, newRenderer.animFile.getAnim(it.key)) })
         renderer.set(newRenderer)
     }
@@ -172,8 +178,7 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
                 put(131, "Intro")
                 put(134, "Win")
                 put(135, "Lose")
-                put(141, "Hit High Lightest")
-                put(145, "Hit High Lightest?")
+                put(140, "Tension Max")
                 put(147, "Hit High Lightest") //0
                 put(148, "Hit High Light")  //2
                 put(149, "Hit High Medium") //4
