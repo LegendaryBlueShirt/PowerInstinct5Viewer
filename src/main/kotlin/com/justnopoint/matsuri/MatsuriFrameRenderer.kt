@@ -58,7 +58,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
     }
 
     override fun getProperties(): List<String> {
-        return listOf(FrameDisplay.BOXES, FrameDisplay.DEBUG, FrameDisplay.AXIS, FrameDisplay.KNOWN, FrameDisplay.BINDS)
+        return listOf(Properties.BOXES, Properties.DEBUG, Properties.AXIS, Properties.KNOWN, Properties.BINDS)
     }
 
     override fun getRenderableSprites(frame: Frame, props: HashMap<String, Boolean>): List<RenderableSprite> {
@@ -68,7 +68,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
 
         val sprites = mutableListOf<RenderableSprite>()
         val name = "${animFile.prefix}${frame.ganmFrame.frame}"
-        if(props[FrameDisplay.BINDS] != false) {
+        if(props[Properties.BINDS] != false) {
             frame.ganmFrame.getBoundEnemy()?.let {
                 val bindName = "${animFile.prefix}${it.frame}"
                 frameFile.getAnimFrame(bindName)?.let { bindFrame ->
@@ -139,7 +139,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
         renderables.add(RenderableText("Duration ${frame.getDuration()}", 20, 40))
 
         frame.ganmFrame.props[GanmFile.HITDEF]?.getShortAt(0)?.let(gatkFile::getHitdef)?.let { hitdef ->
-            if(props[FrameDisplay.DEBUG] != false) {
+            if(props[Properties.DEBUG] != false) {
                 renderables.add(RenderableText("Hitdef ${bytesToHex(hitdef.data)}", 20, 100))
             }
             renderables.add(RenderableText("Damage ${hitdef.getDamage()}", 110, 20))
@@ -183,14 +183,14 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
 
         val name = "${animFile.prefix}${frame.ganmFrame.frame}"
         frameFile.getAnimFrame(name)?.let { data ->
-            if (props[FrameDisplay.DEBUG] != false) {
+            if (props[Properties.DEBUG] != false) {
                 renderables.add(RenderableText("$name ${bytesToHex(data.head)}", 20, 350))
                 var posy = 380
                 for (ref in data.refs) {
                     var posx = 240
                     renderables.add(RenderableText("${ref.ref1} ${ref.ref2} ${bytesToHex(ref.head)}", 20, posy))
                     ref.props.entries.forEach prop@{ (key, value) ->
-                        if ((props[FrameDisplay.KNOWN] != true) && listOf(
+                        if ((props[Properties.KNOWN] != true) && listOf(
                                 AnimFile.ROT,
                                 AnimFile.SCALE,
                                 AnimFile.AXIS,
@@ -217,7 +217,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
 
         val renderables = mutableListOf<RenderableBox>()
 
-        if (props[FrameDisplay.AXIS] != false) {
+        if (props[Properties.AXIS] != false) {
             renderables.add(
                 RenderableBox(-2, 0, 5, 1, Triple(0.0, 1.0, 0.0)))
             renderables.add(
@@ -233,7 +233,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
             }
         }
 
-        if (props[FrameDisplay.BOXES] != false) {
+        if (props[Properties.BOXES] != false) {
             grecFile.getBoxes(frame.ganmFrame.frame)?.let { boxes ->
                 boxes.boxtype[0].forEach {
                     renderables.add(RenderableBox(it.x, it.y, it.width, it.height, Triple(1.0, 1.0, 1.0)))

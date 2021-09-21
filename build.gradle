@@ -46,9 +46,6 @@ dependencies {
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     kotlinOptions {
-//        freeCompilerArgs += "-opt-in=kotlin.ExperimentalUnsignedTypes"
-//        freeCompilerArgs += "-opt-in=okio.ExperimentalFileSystem"
-//        freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
         freeCompilerArgs += [ "-Xuse-experimental=kotlin.ExperimentalUnsignedTypes",
                               "-Xuse-experimental=kotlin.RequiresOptIn",
                               "-Xuse-experimental=okio.ExperimentalFileSystem"]

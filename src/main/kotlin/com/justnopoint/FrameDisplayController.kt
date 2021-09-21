@@ -3,6 +3,7 @@ package com.justnopoint
 import com.justnopoint.`interface`.Character
 import com.justnopoint.`interface`.FrameDataProvider
 import com.justnopoint.`interface`.FrameRenderer
+import com.justnopoint.`interface`.Properties
 import com.justnopoint.`interface`.Sequence
 import com.justnopoint.matsuri.MatsuriFrameDataProvider
 import com.justnopoint.util.AnimHelper
@@ -85,11 +86,11 @@ class FrameDisplayController: Initializable {
 
     private fun bindRendererProperties(renderer: FrameRenderer) {
         val props = renderer.getProperties()
-        toggleBoxes.isDisable = !props.contains(FrameDisplay.BOXES)
-        toggleAxis.isDisable = !props.contains(FrameDisplay.AXIS)
-        toggleBinds.isDisable = !props.contains(FrameDisplay.BINDS)
-        toggleDebug.isDisable = !props.contains(FrameDisplay.DEBUG)
-        toggleHideKnown.isDisable = !props.contains(FrameDisplay.KNOWN)
+        toggleBoxes.isDisable = !props.contains(Properties.BOXES)
+        toggleAxis.isDisable = !props.contains(Properties.AXIS)
+        toggleBinds.isDisable = !props.contains(Properties.BINDS)
+        toggleDebug.isDisable = !props.contains(Properties.DEBUG)
+        toggleHideKnown.isDisable = !props.contains(Properties.KNOWN)
     }
 
     private var keyListener: EventHandler<KeyEvent> = EventHandler { event ->
@@ -162,19 +163,19 @@ class FrameDisplayController: Initializable {
         }
 
         toggleBoxes.selectedProperty().addListener { _, _, bool ->
-            properties[FrameDisplay.BOXES] = bool
+            properties[Properties.BOXES] = bool
         }
         toggleDebug.selectedProperty().addListener { _, _, bool ->
-            properties[FrameDisplay.DEBUG] = bool
+            properties[Properties.DEBUG] = bool
         }
         toggleHideKnown.selectedProperty().addListener { _, _, bool ->
-            properties[FrameDisplay.KNOWN] = bool
+            properties[Properties.KNOWN] = bool
         }
         toggleBinds.selectedProperty().addListener { _, _, bool ->
-            properties[FrameDisplay.BINDS] = bool
+            properties[Properties.BINDS] = bool
         }
         toggleAxis.selectedProperty().addListener { _, _, bool ->
-            properties[FrameDisplay.AXIS] = bool
+            properties[Properties.AXIS] = bool
         }
     }
 
