@@ -23,11 +23,11 @@
                     <items>
                         <MenuItem text="Reset Position" onAction="#resetPosition"/>
                         <CheckMenuItem text="Animate" fx:id="animate"/>
-                        <CheckMenuItem text="Show Boxes" fx:id="toggleBoxes"/>
-                        <CheckMenuItem text="Show Axis" fx:id="toggleAxis"/>
-                        <CheckMenuItem text="Show Debug Information" fx:id="toggleDebug"/>
-                        <CheckMenuItem text="Hide Known Debug Values" fx:id="toggleHideKnown"/>
-                        <CheckMenuItem text="Show Bound Targets In Throws" fx:id="toggleBinds"/>
+                        <CheckMenuItem text="Show Boxes" fx:id="toggleBoxes" disable="true" selected="true"/>
+                        <CheckMenuItem text="Show Axis" fx:id="toggleAxis" disable="true" selected="true"/>
+                        <CheckMenuItem text="Show Debug Information" fx:id="toggleDebug" disable="true" selected="true"/>
+                        <CheckMenuItem text="Hide Known Debug Values" fx:id="toggleHideKnown" disable="true"/>
+                        <CheckMenuItem text="Show Bound Targets In Throws" fx:id="toggleBinds" disable="true" selected="true"/>
                     </items>
                 </Menu>
             </menus>

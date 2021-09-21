@@ -1,34 +1,33 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.util.readIntLe
-import com.justnopoint.util.readShortLe
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.buffer
 
 // Contains axis information for binding characters correctly during throws.
-class ThwpFile(raf: RandomAccessFile, node: Node) {
+class ThwpFile(raf: FileHandle, node: Node) {
+    val buffer = raf.source().buffer()
     val prefix: String
     val coords = ArrayList<List<Pair<Int, Int>>>()
 
     init {
-        raf.seek(node.offset)
+        raf.reposition(buffer, node.offset)
 
-        val chunkSize = raf.readIntLe()
-        val prefix = ByteArray(raf.readUnsignedByte())
-        raf.read(prefix)
+        val chunkSize = buffer.readIntLe()
+        val prefix = buffer.readByteArray(buffer.readByte().toLong())
         this.prefix = String(prefix)
 
-        val start = raf.filePointer
+        val start = raf.position(buffer)
         val offsets = ArrayList<Long>()
-        offsets.add(raf.readIntLe()+start)
-        while(raf.filePointer < offsets[0]) {
-            offsets.add(raf.readIntLe()+start)
+        offsets.add(buffer.readIntLe()+start)
+        while(raf.position(buffer) < offsets[0]) {
+            offsets.add(buffer.readIntLe()+start)
         }
 
         for(offset in offsets) {
-            raf.seek(offset)
-            val nCoords = raf.readShortLe()
+            raf.reposition(buffer, offset)
+            val nCoords = buffer.readShortLe()
             coords.add((0 until nCoords).map {
-                Pair(raf.readShortLe(), raf.readShortLe())
+                Pair(buffer.readShortLe().toInt(), buffer.readShortLe().toInt())
             })
         }
     }

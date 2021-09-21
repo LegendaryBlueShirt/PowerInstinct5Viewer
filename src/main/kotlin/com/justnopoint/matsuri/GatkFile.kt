@@ -1,25 +1,24 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.util.readIntLe
 import com.justnopoint.util.getShortAt
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.buffer
 
 // Gatk chunks contain attack data.  This data is referenced directly by offset.
-class GatkFile(val raf: RandomAccessFile, node: Node) {
+class GatkFile(val raf: FileHandle, node: Node) {
+    val buffer = raf.source().buffer()
     val offset: Long
 
     init {
-        raf.seek(node.offset)
-        val chunkSize = raf.readIntLe()
-        val prefix = ByteArray(raf.readUnsignedByte())
-        raf.read(prefix)
-        offset = raf.filePointer
+        raf.reposition(buffer, node.offset)
+        val chunkSize = buffer.readIntLe()
+        val prefix = buffer.readByteArray(buffer.readByte().toLong())
+        offset = raf.position(buffer)
     }
 
     fun getHitdef(offset: Int): Hitdef {
-        raf.seek(this.offset + offset)
-        val data = ByteArray(34)
-        raf.read(data)
+        raf.reposition(buffer, this.offset + offset)
+        val data = buffer.readByteArray(34)
         return Hitdef(data)
     }
 

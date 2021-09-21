@@ -2,15 +2,13 @@ package com.justnopoint.matsuri
 
 import com.justnopoint.`interface`.*
 import com.justnopoint.util.AnimHelper
-import javafx.beans.property.*
-import javafx.collections.FXCollections
-import javafx.collections.ObservableList
-import java.io.File
-import java.io.RandomAccessFile
+import okio.FileSystem
+import okio.Path
+import kotlin.properties.Delegates
 
-class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider {
-    private val effectFolder = File(matsuriHome, "effect")
-    private val charaFolder = File(matsuriHome, "chara")
+class MatsuriFrameDataProvider(private val matsuriHome: Path): FrameDataProvider {
+    private val effectFolder = matsuriHome.div("effect")
+    private val charaFolder = matsuriHome.div("chara")
 
     private val characters = listOf(
         MatsuriCharacter("Annie Hamilton", "ah"),
@@ -52,30 +50,34 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
         return characters
     }
 
-    var renderer = SimpleObjectProperty<MatsuriFrameRenderer>(this, "renderer")
-    var currentChar = SimpleObjectProperty<Character>(this, "character", characters[0])
-    var palette = SimpleIntegerProperty(this, "palette", 0)
-    var sequences = SimpleListProperty<Sequence>(this, "sequences")
+    private lateinit var renderer: MatsuriFrameRenderer
+    var currentChar: MatsuriCharacter by Delegates.observable(characters[0]) { property, oldValue, newValue ->
+        loadCharacter(newValue)
+    }
+    var palette: Int by Delegates.observable(0) { _, _, newValue ->
+        loadCharacter(currentChar)
+    }
+    private var sequences = emptyList<Sequence>()
 
     private var hanyou = ImagFile().apply {
-        val hanyouRaf = RandomAccessFile(File(effectFolder, "hanyou.vsa"), "r")
+        val fs = FileSystem.SYSTEM
+        val hanyouRaf = fs.openReadOnly(effectFolder.div("hanyou.vsa"))
         load(hanyouRaf, VsaFile(hanyouRaf).getNode(VsaFile.IMAG)!!)
         hanyouRaf.close()
     }
 
     init {
-        palette.addListener { _ ->
-            loadCharacter(currentChar.get())
-        }
-        currentChar.addListener { _, _, newValue ->
-            loadCharacter(newValue)
-        }
-
         loadCharacter(characters[0])
     }
 
-    override fun getCharacterSelection(): Property<Character> {
-        return currentChar
+    override fun setSelectedCharacter(character: Character) {
+        if(character !is MatsuriCharacter) {
+            return
+        }
+        if(character == currentChar) {
+            return
+        }
+        currentChar = character
     }
 
     private fun loadCharacter(character: Character) {
@@ -83,28 +85,27 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
             return
         }
 
-        val charaFile = File(charaFolder, character.getFile(palette.get()))
+        val fs = FileSystem.SYSTEM
+        val charaFile = charaFolder.div(character.getFile(palette))
+        val effectFile = effectFolder.div(character.getEffectFile())
+        val effraf = if(fs.exists(effectFile)) fs.openReadOnly(effectFile) else null
 
-
-        val effectFile = File(effectFolder, character.getEffectFile())
-        val effraf = if(effectFile.exists()) RandomAccessFile(effectFile, "r") else null
-
-        val newRenderer = if(charaFile.exists()) {
-            val raf = RandomAccessFile(charaFile, "r")
+        val newRenderer = if(fs.exists(charaFile)) {
+            val raf = fs.openReadOnly(charaFile)
             MatsuriFrameRenderer(raf, effraf, hanyou)
         } else {
             MatsuriFrameRenderer(effraf!!, null, hanyou)
         }
-        sequences.value = FXCollections.observableList(newRenderer.animFile.offsets.entries.reversed().distinctBy { it.value }.reversed().map { MatsuriSequence(it.key, newRenderer.animFile.getAnim(it.key)) })
-        renderer.set(newRenderer)
+        sequences = newRenderer.animFile.offsets.entries.reversed().distinctBy { it.value }.reversed().map { MatsuriSequence(it.key, newRenderer.animFile.getAnim(it.key)) }
+        renderer = newRenderer
     }
 
-    override fun getSequences(): Property<ObservableList<Sequence>> {
+    override fun getSequences(): List<Sequence> {
         return sequences
     }
 
     override fun getFrameRenderer(): FrameRenderer {
-        return renderer.get()
+        return renderer
     }
 
     class MatsuriCharacter(val fullname: String, val tag: String): Character() {
@@ -184,7 +185,7 @@ class MatsuriFrameDataProvider(private val matsuriHome: File): FrameDataProvider
                 put(131, "Intro")
                 put(134, "Win")
                 put(135, "Lose")
-                put(140, "Tension Max")
+                put(140, "Stress Max")
                 put(147, "Hit High Lightest") //0
                 put(148, "Hit High Light")  //2
                 put(149, "Hit High Medium") //4

@@ -1,33 +1,31 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.util.readIntLe
-import com.justnopoint.util.readShortLe
-import javafx.scene.shape.Rectangle
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.buffer
 
 // Grec chunks contain rectangle data for hitboxes.
-class GrecFile(raf: RandomAccessFile, node: Node) {
+class GrecFile(raf: FileHandle, node: Node) {
+    val buffer = raf.source().buffer()
     val boxes: List<GrecBoxes>
 
     init {
-        raf.seek(node.offset)
+        raf.reposition(buffer, node.offset)
         val offsets = ArrayList<Long>()
-        val chunksize = raf.readIntLe()
-        val prefix = ByteArray(raf.readUnsignedByte())
-        raf.read(prefix)
-        val startOff = raf.filePointer
-        offsets.add(raf.readIntLe()+startOff)
-        while(raf.filePointer < offsets[0]) {
-            offsets.add(raf.readIntLe()+startOff)
+        val chunksize = buffer.readIntLe()
+        val prefix = buffer.readByteArray(buffer.readByte().toLong())
+        val startOff = raf.position(buffer)
+        offsets.add(buffer.readIntLe()+startOff)
+        while(raf.position(buffer) < offsets[0]) {
+            offsets.add(buffer.readIntLe()+startOff)
         }
         val boxTypes = ByteArray(4)
         boxes = offsets.map { offset ->
-            raf.seek(offset)
-            raf.read(boxTypes)
+            raf.reposition(buffer, offset)
+            buffer.read(boxTypes)
             boxTypes.map{ count ->
                 (0 until count).map {
-                    Rectangle(raf.readShortLe().toDouble(), raf.readShortLe().toDouble(),
-                        raf.readShortLe().toDouble(), raf.readShortLe().toDouble()
+                    GrecBox(buffer.readShortLe().toInt(), buffer.readShortLe().toInt(),
+                        buffer.readShortLe().toInt(), buffer.readShortLe().toInt()
                     )
                 }
             }
@@ -51,4 +49,5 @@ class GrecFile(raf: RandomAccessFile, node: Node) {
     }
 }
 
-data class GrecBoxes(val boxtype: List<List<Rectangle>>)
+data class GrecBoxes(val boxtype: List<List<GrecBox>>)
+data class GrecBox(val x: Int, val y: Int, val width: Int, val height: Int)

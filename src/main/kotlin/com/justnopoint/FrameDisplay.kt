@@ -10,6 +10,13 @@ class FrameDisplay: Application() {
     companion object {
         const val FPS = 60
         const val frameDurationNanos = (1000000000.0 / FPS).toLong()
+
+        //Boolean Properties
+        val BOXES = "showBoxes"
+        val DEBUG = "showDebug"
+        val KNOWN = "hideKnown"
+        val AXIS = "showAxis"
+        val BINDS = "showBinds"
     }
 
     override fun start(primaryStage: Stage) {

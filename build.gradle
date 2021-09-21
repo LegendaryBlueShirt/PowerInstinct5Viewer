@@ -40,5 +40,17 @@ repositories {
 
 dependencies {
     implementation "ar.com.hjg:pngj:2.1.0"
+    implementation "com.squareup.okio:okio-multiplatform:3.0.0-alpha.9"
     testImplementation group: 'junit', name: 'junit', version: '4.12'
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+//        freeCompilerArgs += "-opt-in=kotlin.ExperimentalUnsignedTypes"
+//        freeCompilerArgs += "-opt-in=okio.ExperimentalFileSystem"
+//        freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
+        freeCompilerArgs += [ "-Xuse-experimental=kotlin.ExperimentalUnsignedTypes",
+                              "-Xuse-experimental=kotlin.RequiresOptIn",
+                              "-Xuse-experimental=okio.ExperimentalFileSystem"]
+    }
 }

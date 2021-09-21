@@ -1,28 +1,28 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.util.readIntLe
-import com.justnopoint.util.readShortLe
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.buffer
 
-class VsaFile(val raf: RandomAccessFile) {
+class VsaFile(val handle: FileHandle) {
     val chunks = HashMap<String, Node>()
 
     init {
+        val buffer = handle.source().buffer()
         val check = ByteArray(8)
-        raf.read(check)
+        buffer.read(check)
         if(String(check) != VSA) {
             error("Bad header.")
         } else {
             var tag = ""
             val tagbytes = ByteArray(4)
             while(tag != END) {
-                val size = raf.readIntLe()
-                raf.read(tagbytes)
-                val extra = raf.readShortLe()
+                val size = buffer.readIntLe()
+                buffer.read(tagbytes)
+                val extra = buffer.readShortLe().toInt()
                 tag = String(tagbytes)
                 if(size != 0) {
-                    chunks[tag] = Node(raf.filePointer, size, extra)
-                    raf.skipBytes(size)
+                    chunks[tag] = Node(handle.position(buffer), size, extra)
+                    buffer.skip(size.toLong())
                 }
             }
         }

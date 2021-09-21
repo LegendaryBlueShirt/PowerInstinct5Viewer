@@ -3,8 +3,10 @@ package com.justnopoint.matsuri
 import ar.com.hjg.pngj.*
 import ar.com.hjg.pngj.chunks.PngChunkPLTE
 import ar.com.hjg.pngj.chunks.PngChunkTRNS
-import com.justnopoint.util.readIntLe
-import java.io.*
+import okio.Buffer
+import okio.BufferedSource
+import okio.FileHandle
+import okio.buffer
 
 // Imag chunks contain image data as PNGs.
 // This class also loads Pidx chunks, which contain indexed PNGs.
@@ -14,27 +16,28 @@ class ImagFile {
     val palettes = HashMap<String, PngChunkPLTE>()
     val trans = HashMap<String, PngChunkTRNS>()
 
-    fun load(raf: RandomAccessFile, node: Node, ppal: PpalFile? = null) {
-        raf.seek(node.offset)
+    fun load(handle: FileHandle, node: Node, ppal: PpalFile? = null) {
+        val buffer = handle.source().buffer()
+        handle.reposition(buffer, node.offset)
         if(ppal == null) {
-            loadImag(raf, node.extra)
+            loadImag(buffer, node.extra)
         } else {
-            loadPidx(raf, node.extra, ppal)
+            loadPidx(buffer, node.extra, ppal)
         }
     }
 
-    fun loadPidx(raf: RandomAccessFile, nSheets: Int, ppal: PpalFile) {
+    fun loadPidx(source: BufferedSource, nSheets: Int, ppal: PpalFile) {
         for(n in 0 until nSheets) {
-            val chunkSize = raf.readIntLe()
-            var name = ByteArray(raf.readUnsignedByte())
-            raf.read(name)
+            val chunkSize = source.readIntLe()
+            var name = ByteArray(source.readByte().toInt())
+            source.read(name)
             val sheetName = String(name)
             names.add(sheetName)
-            name = ByteArray(raf.readUnsignedByte())
-            raf.read(name)
+            name = ByteArray(source.readByte().toInt())
+            source.read(name)
             val plte = ppal.getPalette(String(name))
-            val header = readBlock(raf)
-            val pngData = readBlock(raf)
+            val header = source.readByteArray(source.readIntLe().toLong())
+            val pngData = source.readByteArray(source.readIntLe().toLong())
             val reader = generatePng(listOf(header, plte, pngData))
             tileSheets.add(reader.readRows() as ImageLineSetDefault<ImageLineInt>)
             if(reader.imgInfo.indexed) {
@@ -44,32 +47,27 @@ class ImagFile {
         }
     }
 
-    fun loadImag(raf: RandomAccessFile, nSheets: Int) {
+    fun loadImag(source: BufferedSource, nSheets: Int) {
         for(n in 0 until nSheets) {
-            val chunkSize = raf.readIntLe()
-            val name = ByteArray(raf.readUnsignedByte())
-            raf.read(name)
+            val chunkSize = source.readIntLe()
+            val name = source.readByteArray(source.readByte().toLong())
+            println(String(name))
             names.add(n, String(name))
-            val header = readBlock(raf)
-            val pngData = readBlock(raf)
+            val header = source.readByteArray(source.readIntLe().toLong())
+            val pngData = source.readByteArray(source.readIntLe().toLong())
             tileSheets.add(n, generatePng(listOf(header, pngData)).readRows() as ImageLineSetDefault<ImageLineInt>)
         }
     }
 
-    private fun readBlock(raf: RandomAccessFile): ByteArray {
-        val data = ByteArray(raf.readIntLe())
-        raf.read(data)
-        return data
-    }
-
     private fun generatePng(chunks: List<ByteArray>): PngReader {
-        val baos = ByteArrayOutputStream()
+        val buffer = Buffer()
+        val baos = buffer.outputStream()
         baos.write(PNG)
         chunks.forEach {
             baos.write(it)
         }
         baos.write(IEND)
-        return PngReader(ByteArrayInputStream(baos.toByteArray()))
+        return PngReader(buffer.inputStream())
     }
 
     fun getSheet(index: Int): ImageLineSetDefault<ImageLineInt>? {

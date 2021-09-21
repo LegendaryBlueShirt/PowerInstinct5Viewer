@@ -1,35 +1,20 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.`interface`.Frame
-import com.justnopoint.`interface`.FrameRenderer
+import com.justnopoint.FrameDisplay
+import com.justnopoint.`interface`.*
 import com.justnopoint.util.AnimHelper
 import com.justnopoint.util.getShortAt
-import javafx.beans.property.Property
-import javafx.beans.property.SimpleBooleanProperty
-import javafx.embed.swing.SwingFXUtils
-import javafx.scene.canvas.GraphicsContext
-import javafx.scene.paint.Color
-import javafx.scene.text.Font
-import javafx.scene.text.FontPosture
-import javafx.scene.text.FontWeight
-import javafx.scene.text.Text
-import java.io.RandomAccessFile
+import okio.FileHandle
 import java.text.DecimalFormat
 
-class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile?, val hanyou: ImagFile): FrameRenderer {
-    var showBoxes = SimpleBooleanProperty(this, "showBoxes", true)
-    var showDebug = SimpleBooleanProperty(this, "showDebug", true)
-    var hideKnown = SimpleBooleanProperty(this, "hideKnown", false)
-    var showAxis = SimpleBooleanProperty(this, "showAxis", true)
-    var showBinds = SimpleBooleanProperty(this, "showBinds", true)
-
-    val grapFile: GrapFile
-    val frameFile: AnimFile
+class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyou: ImagFile): FrameRenderer {
+    private val grapFile: GrapFile
+    private val frameFile: AnimFile
     val animFile: GanmFile
-    val grecFile: GrecFile
-    val thwpFile: ThwpFile
-    val gatkFile: GatkFile
-    val eff = ImagFile()
+    private val grecFile: GrecFile
+    private val thwpFile: ThwpFile
+    private val gatkFile: GatkFile
+    private val eff = ImagFile()
 
     init {
         val vsa = VsaFile(charFile)
@@ -72,53 +57,33 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
         }
     }
 
-    override fun getObservableProperty(name: String): Property<Boolean>? {
-        return when(name) {
-            "showBoxes" -> showBoxes
-            "showDebug" -> showDebug
-            "showAxis" -> showAxis
-            "hideKnown" -> hideKnown
-            "showBinds" -> showBinds
-            else -> null
-        }
+    override fun getProperties(): List<String> {
+        return listOf(FrameDisplay.BOXES, FrameDisplay.DEBUG, FrameDisplay.AXIS, FrameDisplay.KNOWN, FrameDisplay.BINDS)
     }
 
-    override fun renderFrame(g: GraphicsContext, frame: Frame, axisX: Int, axisY: Int, zoom: Double) {
+    override fun getRenderableSprites(frame: Frame, props: HashMap<String, Boolean>): List<RenderableSprite> {
         if (frame !is MatsuriFrameDataProvider.MatsuriFrame) {
-            return
+            return emptyList()
         }
-        g.save()
 
-        g.translate(axisX.toDouble(), axisY.toDouble())
-        g.scale(zoom, zoom)
-
+        val sprites = mutableListOf<RenderableSprite>()
         val name = "${animFile.prefix}${frame.ganmFrame.frame}"
-        if(showBinds.get()) {
+        if(props[FrameDisplay.BINDS] != false) {
             frame.ganmFrame.getBoundEnemy()?.let {
                 val bindName = "${animFile.prefix}${it.frame}"
                 frameFile.getAnimFrame(bindName)?.let { bindFrame ->
                     grapFile.getSprite(bindFrame.refs[0].ref1)?.let { sprite ->
                         val anchor = thwpFile.getCoords(it.frame - 9000)[it.anchorPoint]
-                        val frameAxisX = (frameFile.getXAxis(bindFrame.refs[0]))
-                        val frameAxisY = (frameFile.getYAxis(bindFrame.refs[0]))
-                        println("${anchor.first},${anchor.second}  ${it.axisx},${it.axisy}  $frameAxisX,$frameAxisY")
-                        g.save()
-                        g.translate(
-                            it.axisx.toDouble() - (frameAxisX - anchor.first),
-                            it.axisy.toDouble() + (frameAxisY - anchor.second)
-                        )
-                        g.drawImage(
-                            SwingFXUtils.toFXImage(sprite, null),
-                            0.0,
-                            0.0,
-                            sprite.width.toDouble(),
-                            sprite.height.toDouble(),
-                            0.0,
-                            0.0,
-                            sprite.width * (-1).toDouble(),
-                            sprite.height.toDouble()
-                        )
-                        g.restore()
+                        val frameAxisX = (frameFile.getXAxis(bindFrame.refs[0])).toInt()
+                        val frameAxisY = (frameFile.getYAxis(bindFrame.refs[0])).toInt()
+                        sprites.add(
+                            RenderableSprite(
+                                raster = sprite.raster,
+                                width = sprite.width,
+                                height = sprite.height,
+                                axisX = it.axisx - (frameAxisX - anchor.first),
+                                axisY = it.axisy + (frameAxisY - anchor.second),
+                                scaleX = -1.0))
                     } ?: println("Missing sprite reference ${bindFrame.refs[0].ref1}")
                 }
             }
@@ -128,113 +93,67 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
                 grapFile.getSprite(ref.ref1)?.let { sprite ->
                     val frameAxisX = (frameFile.getXAxis(ref))
                     val frameAxisY = (frameFile.getYAxis(ref))
-                    g.save()
-                    g.globalAlpha = frameFile.getOpacity(ref)
-                    g.translate(frameAxisX.toDouble(), frameAxisY.toDouble())
-                    g.rotate(frameFile.getRotation(ref).toDouble())
-                    g.drawImage(
-                        SwingFXUtils.toFXImage(sprite, null),
-                        0.0,
-                        0.0,
-                        sprite.width.toDouble(),
-                        sprite.height.toDouble(),
-                        0.0,
-                        0.0,
-                        sprite.width * (frameFile.getXScale(ref)).toDouble(),
-                        sprite.height * (frameFile.getYScale(ref)).toDouble()
-                    )
-                    g.restore()
+                    sprites.add(
+                        RenderableSprite(
+                            raster = sprite.raster,
+                            width = sprite.width,
+                            height = sprite.height,
+                            axisX = frameAxisX.toInt(),
+                            axisY = frameAxisY.toInt(),
+                            rotation = frameFile.getRotation(ref).toDouble(),
+                            scaleX = (frameFile.getXScale(ref)).toDouble(),
+                            scaleY = (frameFile.getYScale(ref)).toDouble(),
+                            opacity = frameFile.getOpacity(ref)))
                 } ?: println("Missing sprite reference ${ref.ref1}")
             }
         }
         frame.ganmFrame.getEffects().reversed().forEach { effect ->
-            val img = effect.toBufferedImage(eff, hanyou)
+            val img = effect.toSprite(eff, hanyou)
             val scale = frame.ganmFrame.getEffectScale(effect)
             val rotation = frame.ganmFrame.getEffectRotation(effect)
-            g.save()
-            g.rotate(rotation)
-            g.translate(effect.axisx * scale.first, effect.axisy * scale.second)
-            g.drawImage(
-                SwingFXUtils.toFXImage(img, null),
-                0.0,
-                0.0,
-                img.width.toDouble(),
-                img.height.toDouble(),
-                0.0,
-                0.0,
-                img.width * scale.first,
-                img.height * scale.second
-            )
-            g.restore()
+            sprites.add(
+                RenderableSprite(
+                raster = img.raster,
+                    width = img.width,
+                    height = img.height,
+                    axisX = (effect.axisx * scale.first).toInt(),
+                    axisY = (effect.axisy * scale.second).toInt(),
+                    rotation = rotation,
+                    scaleX = scale.first,
+                    scaleY = scale.second
+            ))
         }
-
-        g.restore()
+        return sprites
     }
 
-    override fun renderFrameData(g: GraphicsContext, frame: Frame, axisX: Int, axisY: Int, zoom: Double) {
+    override fun getRenderableText(frame: Frame, props: HashMap<String, Boolean>): List<RenderableText> {
         if (frame !is MatsuriFrameDataProvider.MatsuriFrame) {
-            return
-        }
-        g.save()
-        g.font = Font.font(getMonospaceFonts()[0])
-        if (showAxis.get()) {
-            g.save()
-            g.translate(axisX.toDouble(), axisY.toDouble())
-            g.stroke = Color(0.0, 1.0, 0.0, 1.0)
-            g.fill = Color(0.0, 1.0, 0.0, 1.0)
-            g.strokeLine(-2.0, 0.0, 2.0, 0.0)
-            g.strokeLine(0.0, -2.0, 0.0, 2.0)
-            g.restore()
-
-            if (frame.ganmFrame.frame >= 9000) {
-                g.stroke = Color(1.0, 0.0, 1.0, 1.0)
-                g.fill = Color(1.0, 0.0, 1.0, 1.0)
-                thwpFile.getCoords(frame.ganmFrame.frame - 9000).forEachIndexed { i, coords ->
-                    g.save()
-                    g.translate(axisX.toDouble(), axisY.toDouble())
-                    g.scale(zoom, zoom)
-                    g.translate(coords.first.toDouble(), coords.second.toDouble())
-                    g.strokeLine(-2.0, 0.0, 2.0, 0.0)
-                    g.strokeLine(0.0, -2.0, 0.0, 2.0)
-                    g.font = Font("Helvetica", 5.0);
-                    g.strokeText("$i", -6.0,-6.0)
-                    g.restore()
-                }
-            }
+            return emptyList()
         }
 
-        g.fill = Color(1.0, 1.0, 1.0, 1.0)
+        val renderables = mutableListOf<RenderableText>()
+
         val frameTime = AnimHelper.getTimeForFrame(frame.seq, frame.seq.ganmFrames.indexOf(frame.ganmFrame))
         val totalAnimTime = AnimHelper.getSequenceDurationTotal(frame.seq)
-        g.fillText("Time $frameTime/$totalAnimTime", 20.0, 20.0)
-        g.fillText("Duration ${frame.getDuration()}", 20.0, 40.0)
+        renderables.add(RenderableText("Time $frameTime/$totalAnimTime", 20, 20))
+        renderables.add(RenderableText("Duration ${frame.getDuration()}", 20, 40))
 
         frame.ganmFrame.props[GanmFile.HITDEF]?.getShortAt(0)?.let(gatkFile::getHitdef)?.let { hitdef ->
-            if(showDebug.get()) {
-                g.fillText("Hitdef ${bytesToHex(hitdef.data)}", 20.0, 100.0)
+            if(props[FrameDisplay.DEBUG] != false) {
+                renderables.add(RenderableText("Hitdef ${bytesToHex(hitdef.data)}", 20, 100))
             }
-            g.fillText("Damage ${hitdef.getDamage()}", 110.0, 20.0)
+            renderables.add(RenderableText("Damage ${hitdef.getDamage()}", 110, 20))
             val plusMinusNF = DecimalFormat("+#;-#")
             val remaining = totalAnimTime - frameTime
             val hitTime = animFile.getAnim(hitdef.getHitAnim()).sumOf { it.duration }
 
-            g.fillText("Guard | L | H | A |", 110.0, 40.0)
-
-            g.fillText("      | ${if(hitdef.isLowUnblockable()) 'X' else 'O'} | ${if(hitdef.isHighUnblockable()) 'X' else 'O'} | ${if(hitdef.isAirUnblockable()) 'X' else 'O'} |", 110.0, 60.0)
-            g.fillText("On Hit ${plusMinusNF.format(hitTime - remaining)}", 110.0, 80.0)
+            renderables.add(RenderableText("Guard | L | H | A |", 110, 40))
+            renderables.add(RenderableText("      | ${if(hitdef.isLowUnblockable()) 'X' else 'O'} | ${if(hitdef.isHighUnblockable()) 'X' else 'O'} | ${if(hitdef.isAirUnblockable()) 'X' else 'O'} |", 110, 60))
+            renderables.add(RenderableText("On Hit ${plusMinusNF.format(hitTime - remaining)}", 110, 80))
         }
 
         val propslist = mutableListOf<String>()
         frame.ganmFrame.getHelperSpawn()?.let {
-            g.save()
-            g.translate(axisX.toDouble(), axisY.toDouble())
-            g.scale(zoom, zoom)
-            g.translate(it.x.toDouble(), -it.y.toDouble())
-            g.stroke = Color(1.0, 1.0, 0.0, 1.0)
-            g.fill = Color(1.0, 1.0, 0.0, 1.0)
-            g.strokeLine(-2.0, 0.0, 2.0, 0.0)
-            g.strokeLine(0.0, -2.0, 0.0, 2.0)
-            g.restore()
             propslist.add("Spawn Entity ${it.ref} at ${it.x.toDouble()},${-it.y.toDouble()}")
         }
 
@@ -259,80 +178,83 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
         }?.run(propslist::add)
 
         propslist.forEachIndexed { index, string ->
-            g.fillText(string, 260.0, 20.0 + 20.0 * index)
-        }
-
-        if(showDebug.get()) {
-            var drawx = 20.0
-            g.fill = Color(1.0, 1.0, 1.0, 1.0)
-            frame.ganmFrame.props.forEach prop@{ (key, value) ->
-                if (hideKnown.get() && GanmFile.knownValues().contains(key and 0xFF)) {
-                    return@prop
-                }
-                g.fillText("$key ${bytesToHex(value)}", drawx, 320.0)
-                drawx += (60 + 14 * value.size)
-            }
+            renderables.add(RenderableText(string, 260, 20 + 20 * index))
         }
 
         val name = "${animFile.prefix}${frame.ganmFrame.frame}"
         frameFile.getAnimFrame(name)?.let { data ->
-            if (showDebug.get()) {
-                g.fill = Color(1.0, 1.0, 1.0, 1.0)
-                g.fillText("$name ${bytesToHex(data.head)}", 20.0, 350.0)
-                var posy = 380.0
+            if (props[FrameDisplay.DEBUG] != false) {
+                renderables.add(RenderableText("$name ${bytesToHex(data.head)}", 20, 350))
+                var posy = 380
                 for (ref in data.refs) {
-                    var posx = 240.0
-                    g.fillText("${ref.ref1} ${ref.ref2} ${bytesToHex(ref.head)}", 20.0, posy)
+                    var posx = 240
+                    renderables.add(RenderableText("${ref.ref1} ${ref.ref2} ${bytesToHex(ref.head)}", 20, posy))
                     ref.props.entries.forEach prop@{ (key, value) ->
-                        if (hideKnown.get() && listOf(AnimFile.ROT, AnimFile.SCALE, AnimFile.AXIS, AnimFile.RGBA_ADJUST).contains(key)) {
+                        if ((props[FrameDisplay.KNOWN] != true) && listOf(
+                                AnimFile.ROT,
+                                AnimFile.SCALE,
+                                AnimFile.AXIS,
+                                AnimFile.RGBA_ADJUST
+                            ).contains(key)
+                        ) {
                             return@prop
                         }
-                        g.fillText("${key}-${bytesToHex(value)}", posx, posy)
+                        renderables.add(RenderableText("${key}-${bytesToHex(value)}", posx, posy))
                         posx += (60 + 14 * value.size)
                     }
                     posy += 25
                 }
             }
+        }
 
-            if (showBoxes.get()) {
-                g.save()
-                g.translate(axisX.toDouble(), axisY.toDouble())
-                g.scale(zoom, zoom)
-                grecFile.getBoxes(frame.ganmFrame.frame)?.let { boxes ->
-                    g.stroke = Color(1.0, 1.0, 1.0, 0.9)
-                    g.fill = Color(1.0, 1.0, 1.0, 0.5)
-                    boxes.boxtype[0].forEach {
-                        g.strokeRect(it.x, it.y, it.width, it.height)
-                        g.fillRect(it.x, it.y, it.width, it.height)
-                    }
-                    g.stroke = Color(1.0, 0.0, 0.0, 0.9)
-                    g.fill = Color(1.0, 0.0, 0.0, 0.5)
-                    boxes.boxtype[1].forEach {
-                        g.strokeRect(it.x, it.y, it.width, it.height)
-                        g.fillRect(it.x, it.y, it.width, it.height)
-                    }
-                    g.stroke = Color(0.0, 0.0, 1.0, 0.9)
-                    g.fill = Color(0.0, 0.0, 1.0, 0.5)
-                    boxes.boxtype[2].forEach {
-                        g.strokeRect(it.x, it.y, it.width, it.height)
-                        g.fillRect(it.x, it.y, it.width, it.height)
-                    }
-                    g.stroke = Color(0.0, 1.0, 0.0, 0.9)
-                    g.fill = Color(0.0, 1.0, 0.0, 0.5)
-                    boxes.boxtype[3].forEach {
-                        g.strokeRect(it.x, it.y, it.width, it.height)
-                        g.fillRect(it.x, it.y, it.width, it.height)
-                    }
+        return renderables
+    }
+
+    override fun getRenderableBoxes(frame: Frame, props: HashMap<String, Boolean>): List<RenderableBox> {
+        if (frame !is MatsuriFrameDataProvider.MatsuriFrame) {
+            return emptyList()
+        }
+
+        val renderables = mutableListOf<RenderableBox>()
+
+        if (props[FrameDisplay.AXIS] != false) {
+            renderables.add(
+                RenderableBox(-2, 0, 5, 1, Triple(0.0, 1.0, 0.0)))
+            renderables.add(
+                RenderableBox(0, -2, 1, 5, Triple(0.0, 1.0, 0.0)))
+
+            if (frame.ganmFrame.frame >= 9000) {
+                thwpFile.getCoords(frame.ganmFrame.frame - 9000).forEachIndexed { _, coords ->
+                    renderables.add(
+                        RenderableBox(coords.first -2, coords.second, 5, 1, Triple(1.0, 0.0, 1.0)))
+                    renderables.add(
+                        RenderableBox(coords.first, coords.second -2, 1, 5, Triple(1.0, 0.0, 1.0)))
                 }
-                g.restore()
             }
         }
 
-        g.restore()
+        if (props[FrameDisplay.BOXES] != false) {
+            grecFile.getBoxes(frame.ganmFrame.frame)?.let { boxes ->
+                boxes.boxtype[0].forEach {
+                    renderables.add(RenderableBox(it.x, it.y, it.width, it.height, Triple(1.0, 1.0, 1.0)))
+                }
+                boxes.boxtype[1].forEach {
+                    renderables.add(RenderableBox(it.x, it.y, it.width, it.height, Triple(1.0, 0.0, 0.0)))
+                }
+                boxes.boxtype[2].forEach {
+                    renderables.add(RenderableBox(it.x, it.y, it.width, it.height, Triple(0.0, 0.0, 1.0)))
+                }
+                boxes.boxtype[3].forEach {
+                    renderables.add(RenderableBox(it.x, it.y, it.width, it.height, Triple(0.0, 1.0, 0.0)))
+                }
+            }
+        }
+
+        return renderables
     }
 
     private val hexArray = "0123456789ABCDEF".toCharArray()
-    fun bytesToHex(bytes: ByteArray): String {
+    private fun bytesToHex(bytes: ByteArray): String {
         val hexChars = CharArray(bytes.size * 2)
         for (j in bytes.indices) {
             val v = bytes[j].toInt() and 0xFF
@@ -340,22 +262,5 @@ class MatsuriFrameRenderer(charFile: RandomAccessFile, effFile: RandomAccessFile
             hexChars[j * 2 + 1] = hexArray[v and 0x0F]
         }
         return String(hexChars)
-    }
-
-    fun getMonospaceFonts(): List<String> {
-        val thinTxt = Text("1 l")
-        val thickTxt = Text("MWX")
-
-        val fontFamilyList = Font.getFamilies()
-        val monospacedFonts = mutableListOf<String>()
-        fontFamilyList.forEach {
-            val font = Font.font(it, FontWeight.NORMAL, FontPosture.REGULAR, 14.0)
-            thinTxt.font = font
-            thickTxt.font = font
-            if(thinTxt.layoutBounds.width == thickTxt.layoutBounds.width) {
-                monospacedFonts.add(it)
-            }
-        }
-        return monospacedFonts
     }
 }

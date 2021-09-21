@@ -1,25 +1,26 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.util.readIntLe
 import com.justnopoint.util.getIntAt
-import java.io.RandomAccessFile
+import okio.BufferedSource
+import okio.FileHandle
+import okio.buffer
 
 // Anim chunks contain data for single frames which are one or more sprites
 // put together with additional metadata such as scale, axis, and rotation
-class AnimFile(val raf: RandomAccessFile, node: Node) {
+class AnimFile(val raf: FileHandle, node: Node) {
+    val buffer = raf.source().buffer()
     val names = ArrayList<String>(node.extra)
     val offsets = ArrayList<Long>(node.extra)
 
     init {
-        raf.seek(node.offset)
+        raf.reposition(buffer, node.offset)
 
         for(n in 0 until node.extra) {
-            val chunkSize = raf.readIntLe()
-            val name = ByteArray(raf.readUnsignedByte())
-            raf.read(name)
+            val chunkSize = buffer.readIntLe()
+            val name = buffer.readByteArray(buffer.readByte().toLong())
             names.add(n, String(name))
-            offsets.add(n, raf.filePointer)
-            raf.skipBytes(chunkSize)
+            offsets.add(n, raf.position(buffer))
+            buffer.skip(chunkSize.toLong())
         }
     }
 
@@ -84,17 +85,16 @@ class AnimFile(val raf: RandomAccessFile, node: Node) {
         }
 
         val index = names.indexOf(name)
-        raf.seek(offsets[index])
-        val mode = raf.readUnsignedByte()
+        raf.reposition(buffer, offsets[index])
+        val mode = buffer.readByte()
         if(mode < 2) {
-            println("Spr count less than 0! $mode at ${raf.filePointer}")
+            println("Spr count less than 0! $mode at ${raf.position(buffer)}")
         }
-        val head = ByteArray(20 + 4*mode)
-        raf.read(head)
-        val refs = (0 until (mode-2)).map { raf.readRef() }
+        val head = buffer.readByteArray((20 + 4*mode).toLong())
+        val refs = (0 until (mode-2)).map { buffer.readRef() }
         if(index < (offsets.size-1)) {
-            if((offsets[index+1] - raf.filePointer) > 13) {
-                println("Possible read underrun, file pointer mismatch at ${raf.filePointer}")
+            if((offsets[index+1] - raf.position(buffer)) > 13) {
+                println("Possible read underrun, file pointer mismatch at ${raf.position(buffer)}")
             }
         }
         return AnimFrame(head, refs)
@@ -109,17 +109,15 @@ class AnimFile(val raf: RandomAccessFile, node: Node) {
     }
 }
 
-fun RandomAccessFile.readRef(): RefSpr {
+fun BufferedSource.readRef(): RefSpr {
     val head = ByteArray(9)
     read(head)
-    val propCount = readUnsignedByte()
+    val propCount = readByte()
     readByte() //One
-    val ref = ByteArray(readUnsignedByte())
-    read(ref)
-    val ref2 = ByteArray(readUnsignedByte())
-    read(ref2)
+    val ref = readByteArray(readByte().toLong())
+    val ref2 = readByteArray(readByte().toLong())
     val props = (0 until propCount).associate {
-        val key = readUnsignedByte()
+        val key = readByte().toInt()
         val value = when(key) {
             AnimFile.AXIS -> ByteArray(8)
             AnimFile.ROT -> ByteArray(4)
@@ -130,7 +128,7 @@ fun RandomAccessFile.readRef(): RefSpr {
             0x32 -> ByteArray(2)
             0x00 -> ByteArray(1)
             else -> {
-                println("No case for prop $key at position $filePointer")
+                println("No case for prop $key")
                 ByteArray(0)
             }
         }

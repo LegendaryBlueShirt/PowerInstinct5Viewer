@@ -21,6 +21,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.HBox
+import okio.Path.Companion.toPath
 import java.io.File
 import java.io.IOException
 import java.net.URL
@@ -44,6 +45,7 @@ class FrameDisplayController: Initializable {
     var currentFrame = 0
     var sequenceTime = 0
     var sequence: Sequence? = null
+    var properties = HashMap<String, Boolean>()
 
     private val loadDialog by lazy {
         LoadDialog()
@@ -60,16 +62,13 @@ class FrameDisplayController: Initializable {
         val result = loadDialog.showAndWait()
         if (result.get() == ButtonType.OK) {
             loadDialog.folder.let {
-                frameDataProvider = MatsuriFrameDataProvider(it).apply {
-                    bindRendererProperties(getFrameRenderer())
-                    renderer.addListener { _, _, newRenderer ->
-                        bindRendererProperties(newRenderer)
-                    }
-                    characterSelect.items = FXCollections.observableList(getCharacters())
-                    getCharacterSelection().bind(characterSelect.valueProperty())
-                    sequenceSelect.itemsProperty().bind(getSequences())
-                    view.rendererProvider = this
-                }
+                val provider = MatsuriFrameDataProvider(it.absolutePath.toPath())
+                frameDataProvider = provider
+                view.rendererProvider = provider
+                bindRendererProperties(provider.getFrameRenderer())
+                characterSelect.items = FXCollections.observableList(provider.getCharacters())
+                characterSelect.valueProperty().set(provider.currentChar)
+                sequenceSelect.selectionModel.select(0)
             }
 
             try {
@@ -85,16 +84,12 @@ class FrameDisplayController: Initializable {
     }
 
     private fun bindRendererProperties(renderer: FrameRenderer) {
-        renderer.getObservableProperty("showBoxes")
-            ?.bind(toggleBoxes.selectedProperty())
-        renderer.getObservableProperty("showAxis")
-            ?.bind(toggleAxis.selectedProperty())
-        renderer.getObservableProperty("showDebug")
-            ?.bind(toggleDebug.selectedProperty())
-        renderer.getObservableProperty("hideKnown")
-            ?.bind(toggleHideKnown.selectedProperty())
-        renderer.getObservableProperty("showBinds")
-            ?.bind(toggleBinds.selectedProperty())
+        val props = renderer.getProperties()
+        toggleBoxes.isDisable = !props.contains(FrameDisplay.BOXES)
+        toggleAxis.isDisable = !props.contains(FrameDisplay.AXIS)
+        toggleBinds.isDisable = !props.contains(FrameDisplay.BINDS)
+        toggleDebug.isDisable = !props.contains(FrameDisplay.DEBUG)
+        toggleHideKnown.isDisable = !props.contains(FrameDisplay.KNOWN)
     }
 
     private var keyListener: EventHandler<KeyEvent> = EventHandler { event ->
@@ -152,10 +147,34 @@ class FrameDisplayController: Initializable {
                 sequenceSelect.selectionModel.select(0)
             }
         }
+        characterSelect.valueProperty().addListener { _, _, newValue ->
+            if(newValue != null) {
+                frameDataProvider?.let { provider ->
+                    provider.setSelectedCharacter(newValue)
+                    sequenceSelect.items = FXCollections.observableList(provider.getSequences())
+                }
+            }
+        }
         sequenceSelect.valueProperty().addListener { _, _, newValue ->
             sequence = newValue
             currentFrame = 0
             sequenceTime = 0
+        }
+
+        toggleBoxes.selectedProperty().addListener { _, _, bool ->
+            properties[FrameDisplay.BOXES] = bool
+        }
+        toggleDebug.selectedProperty().addListener { _, _, bool ->
+            properties[FrameDisplay.DEBUG] = bool
+        }
+        toggleHideKnown.selectedProperty().addListener { _, _, bool ->
+            properties[FrameDisplay.KNOWN] = bool
+        }
+        toggleBinds.selectedProperty().addListener { _, _, bool ->
+            properties[FrameDisplay.BINDS] = bool
+        }
+        toggleAxis.selectedProperty().addListener { _, _, bool ->
+            properties[FrameDisplay.AXIS] = bool
         }
     }
 
@@ -189,7 +208,7 @@ class FrameDisplayController: Initializable {
                 }
 
                 if(!skipFrame) {
-                    view.render()
+                    view.render(properties)
                 } else {
                     framesSkipped++
                     skipFrame = false

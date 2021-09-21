@@ -2,13 +2,19 @@ package com.justnopoint
 
 import com.justnopoint.`interface`.Frame
 import com.justnopoint.`interface`.FrameDataProvider
-import com.justnopoint.`interface`.FrameRenderer
+import com.justnopoint.`interface`.RenderableSprite
+import javafx.embed.swing.SwingFXUtils
 import javafx.event.EventHandler
 import javafx.scene.canvas.Canvas
 import javafx.scene.input.MouseButton
 import javafx.scene.input.MouseEvent
 import javafx.scene.paint.Color
+import javafx.scene.text.Font
+import javafx.scene.text.FontPosture
+import javafx.scene.text.FontWeight
+import javafx.scene.text.Text
 import javafx.stage.WindowEvent
+import java.awt.image.BufferedImage
 
 class ViewerWindow: Canvas() {
     var currentX = 400
@@ -38,14 +44,46 @@ class ViewerWindow: Canvas() {
         running = true
     }
 
-    fun render() {
+    fun render(props: HashMap<String, Boolean>) {
         val g = graphicsContext2D
         g.fill = background
         g.fillRect(0.0, 0.0, width, height)
 
         currentFrame?.let {
-            rendererProvider?.getFrameRenderer()?.renderFrame(g = g, frame = it, axisY = getAxisY(), axisX = getAxisX(), zoom = currentZoom)
-            rendererProvider?.getFrameRenderer()?.renderFrameData(g = g, frame = it, axisY = getAxisY(), axisX = getAxisX(), zoom = currentZoom)
+            g.save()
+            g.translate(getAxisX().toDouble(), getAxisY().toDouble())
+            g.scale(currentZoom, currentZoom)
+            rendererProvider?.getFrameRenderer()?.getRenderableSprites(frame = it, props = props)?.forEach { renderable ->
+                g.save()
+                g.translate(renderable.axisX.toDouble(), renderable.axisY.toDouble())
+                g.rotate(renderable.rotation)
+                g.drawImage(
+                    SwingFXUtils.toFXImage(spriteToBufferedImage(renderable), null),
+                    0.0,
+                    0.0,
+                    renderable.width.toDouble(),
+                    renderable.height.toDouble(),
+                    0.0,
+                    0.0,
+                    renderable.width * renderable.scaleX,
+                    renderable.height * renderable.scaleY
+                )
+                g.restore()
+            }
+            rendererProvider?.getFrameRenderer()?.getRenderableBoxes(frame = it, props = props)?.forEach { box ->
+                g.stroke = Color(box.color.first, box.color.second, box.color.third, 0.9)
+                g.fill = Color(box.color.first, box.color.second, box.color.third, 0.5)
+                g.strokeRect(box.x.toDouble(), box.y.toDouble(), box.width.toDouble(), box.height.toDouble())
+                g.fillRect(box.x.toDouble(), box.y.toDouble(), box.width.toDouble(), box.height.toDouble())
+            }
+            g.restore()
+            g.save()
+            g.font = Font.font(getMonospaceFonts()[0])
+            g.fill = Color(1.0, 1.0, 1.0, 1.0)
+            rendererProvider?.getFrameRenderer()?.getRenderableText(frame = it, props = props)?.forEach { text ->
+                g.fillText(text.text, text.positionX.toDouble(), text.positionY.toDouble())
+            }
+            g.restore()
         }
     }
 
@@ -112,5 +150,29 @@ class ViewerWindow: Canvas() {
                 dragging = false
             }
         }
+    }
+
+    private fun spriteToBufferedImage(sprite: RenderableSprite): BufferedImage {
+        val buf = BufferedImage(sprite.width, sprite.height, BufferedImage.TYPE_INT_ARGB)
+        val raster = buf.raster
+        raster.setPixels(0, 0, sprite.width, sprite.height, sprite.raster)
+        return buf
+    }
+
+    private fun getMonospaceFonts(): List<String> {
+        val thinTxt = Text("1 l")
+        val thickTxt = Text("MWX")
+
+        val fontFamilyList = Font.getFamilies()
+        val monospacedFonts = mutableListOf<String>()
+        fontFamilyList.forEach {
+            val font = Font.font(it, FontWeight.NORMAL, FontPosture.REGULAR, 14.0)
+            thinTxt.font = font
+            thickTxt.font = font
+            if(thinTxt.layoutBounds.width == thickTxt.layoutBounds.width) {
+                monospacedFonts.add(it)
+            }
+        }
+        return monospacedFonts
     }
 }

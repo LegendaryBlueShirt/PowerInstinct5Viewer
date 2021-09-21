@@ -1,15 +1,14 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.util.readIntLe
-import com.justnopoint.util.readShortLe
 import com.justnopoint.util.getShortAt
-import java.awt.image.*
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.buffer
 import kotlin.collections.HashMap
 
 // Ganm chunks contain definitions for character animation and behavior
 // Data is inlined by a series of key/value pairs with an index table at the top
-class GanmFile(val raf: RandomAccessFile, node: Node) {
+class GanmFile(val raf: FileHandle, node: Node) {
+    val buffer = raf.source().buffer()
     val offsets = HashMap<Int, Long>()
     val prefix: String
 
@@ -46,17 +45,16 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
     }
 
     init {
-        raf.seek(node.offset)
-        val chunkSize = raf.readIntLe()
-        val str = ByteArray(raf.readUnsignedByte())
-        raf.read(str)
+        raf.reposition(buffer, node.offset)
+        val chunkSize = buffer.readIntLe()
+        val str = buffer.readByteArray(buffer.readByte().toLong())
         prefix = String(str)
-        val pointer = raf.filePointer
+        val pointer = raf.position(buffer)
 
-        offsets[0] = pointer+raf.readIntLe()
+        offsets[0] = pointer+buffer.readIntLe()
         var index = 1
-        while(raf.filePointer < offsets[0]!!) {
-            offsets[index++] = pointer+raf.readIntLe()
+        while(raf.position(buffer) < offsets[0]!!) {
+            offsets[index++] = pointer+buffer.readIntLe()
         }
 
         offsets[index] = -1
@@ -66,59 +64,52 @@ class GanmFile(val raf: RandomAccessFile, node: Node) {
         if(offsets[index] == -1L) {
             return getSpecialAnim()
         }
-        raf.seek(offsets[index]!!)
+        raf.reposition(buffer, offsets[index]!!)
         var props = HashMap<Int, ByteArray>()
         val anim = mutableListOf<GanmFrame>()
         loop@ while(true) {
-            val mode = raf.readShortLe()
+            val mode = buffer.readShortLe().toInt()
             when(mode and 0xFF) {
                 LOOP_END, ANIM_END -> break@loop
                 NO_FRAME -> {
-                    anim.add(GanmFrame(-1, raf.readShortLe(), props))
+                    anim.add(GanmFrame(-1, buffer.readShortLe().toInt(), props))
                     props = HashMap()
                 }
                 FRAME -> {
-                    anim.add(GanmFrame(raf.readIntLe(), raf.readShortLe(), props))
+                    anim.add(GanmFrame(buffer.readIntLe(), buffer.readShortLe().toInt(), props))
                     props = HashMap()
                 }
                 VEL_X, 13, 14, EFFECT_SCALE, 54 -> {
-                    val data = ByteArray(4)
-                    raf.read(data)
+                    val data = buffer.readByteArray(4)
                     props[mode] = data
                 }
                 VEL_X_AND_Y, 16 -> {
-                    val data = ByteArray(12)
-                    raf.read(data)
+                    val data = buffer.readByteArray(12)
                     props[mode] = data
                 }
                 EFFECT_BIND -> { // Generate effect?
-                    val data = ByteArray(10) //Wrong for Annie 74
-                    raf.read(data)
+                    val data = buffer.readByteArray(10) //Wrong for Annie 74
                     props[mode] = data
                 }
                 29 -> { //Unknown behavior
                     //29 Found in Annie anim 79
-                    val data = ByteArray(18)
-                    raf.read(data)
+                    val data = buffer.readByteArray(18)
                     props[mode] = data
                 }
                 27, EFFECT -> {
                     //27 Found in Annie anim 116
-                    val data = ByteArray(16)
-                    raf.read(data)
+                    val data = buffer.readByteArray(16)
                     props[mode] = data
                 }
                 HITDEF, SND, POSADD_X, POSADD_Y, EFFECT_ROTATE, EFFECT_FADE_IN -> {
-                    val data = ByteArray(2)
-                    raf.read(data)
+                    val data = buffer.readByteArray(2)
                     props[mode] = data
                 }
                 BIND -> { //Throw anchor
-                    val frame = raf.readShortLe()
-                    val data = ByteArray(16)
-                    raf.read(data)
+                    val frame = buffer.readShortLe().toInt()
+                    val data = buffer.readByteArray(16)
                     props[mode] = data
-                    anim.add(GanmFrame(frame, raf.readShortLe(), props))
+                    anim.add(GanmFrame(frame, buffer.readShortLe().toInt(), props))
                     props = HashMap()
                 }
                 LOOP_START, GRAVITY, ARMOR, CANCEL, AFTERIMAGES -> {
@@ -256,25 +247,24 @@ fun GanmFrame.getVelY(): Int? {
     }
 }
 
-fun Effect.toBufferedImage(sheets: ImagFile, hanyou: ImagFile): BufferedImage {
+fun Effect.toSprite(sheets: ImagFile, hanyou: ImagFile): GrapFile.Sprite {
     val sourceIndex = source-1
     println(sourceIndex)
     // This works for Annie but probably needs tweaking, or we're missing entire sheets
-    val sheet = sheets.getSheet(sourceIndex)?:hanyou.getSheet(sourceIndex-4)?:return BufferedImage(1,1,BufferedImage.TYPE_INT_ARGB)
-    return BufferedImage(sw, sh, BufferedImage.TYPE_INT_ARGB).apply {
-        val raster = raster
-        val plte = if(sheet.getImageLine(0).imgInfo.indexed) {
-            sheets.palettes[sheets.names.find { it.endsWith("$sourceIndex") }]!!
-        } else {
-            null
-        }
-        val trns = if(sheet.getImageLine(0).imgInfo.indexed) {
-            sheets.trans[sheets.names.find { it.endsWith("$sourceIndex") }]!!
-        } else {
-            null
-        }
-        sheet.getRect(sx, sy, sw, sh, plte, trns).forEachIndexed { y, line ->
-            raster.setPixels(0, y, sw, 1, line)
-        }
+    val sheet = sheets.getSheet(sourceIndex)?:hanyou.getSheet(sourceIndex-4)?:return GrapFile.Sprite(0, 0, IntArray(0))
+    val raster = IntArray(sw*sh*4)
+    val plte = if(sheet.getImageLine(0).imgInfo.indexed) {
+        sheets.palettes[sheets.names.find { it.endsWith("$sourceIndex") }]!!
+    } else {
+        null
     }
+    val trns = if(sheet.getImageLine(0).imgInfo.indexed) {
+        sheets.trans[sheets.names.find { it.endsWith("$sourceIndex") }]!!
+    } else {
+        null
+    }
+    sheet.getRect(sx, sy, sw, sh, plte, trns).forEachIndexed { y, line ->
+        System.arraycopy(line, 0, raster, y*sw*4, line.size)
+    }
+    return GrapFile.Sprite(sw, sh, raster)
 }

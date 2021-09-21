@@ -1,21 +1,21 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.util.readIntLe
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.buffer
 
 // Ppal chunk contains PNG palettes.  Used with Pidx chunks.
-class PpalFile(raf: RandomAccessFile, node: Node) {
+class PpalFile(raf: FileHandle, node: Node) {
+    val buffer = raf.source().buffer()
     val names = ArrayList<String>()
     val palettes = ArrayList<ByteArray>()
 
     init {
-        raf.seek(node.offset)
+        raf.reposition(buffer, node.offset)
 
         for(n in 0 until node.extra) {
-            val data = ByteArray(raf.readIntLe())
-            val name = ByteArray(raf.readUnsignedByte())
-            raf.read(name)
-            raf.read(data)
+            val data = ByteArray(buffer.readIntLe())
+            val name = buffer.readByteArray(buffer.readByte().toLong())
+            buffer.read(data)
             names.add(String(name))
             palettes.add(data)
         }

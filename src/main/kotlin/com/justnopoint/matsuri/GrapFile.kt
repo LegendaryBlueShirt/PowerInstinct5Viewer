@@ -2,82 +2,80 @@ package com.justnopoint.matsuri
 
 import ar.com.hjg.pngj.ImageLineInt
 import ar.com.hjg.pngj.ImageLineSetDefault
-import com.justnopoint.util.readIntLe
-import com.justnopoint.util.readShortLe
-import java.awt.image.BufferedImage
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.buffer
 
 // For tiled images, Grap chunks contain the information to
 // piece them together from sheets.
-class GrapFile(private val raf: RandomAccessFile, node: Node, private val sheets: ImagFile) {
+class GrapFile(private val raf: FileHandle, node: Node, private val sheets: ImagFile) {
+    val buffer = raf.source().buffer()
     val names = ArrayList<String>(node.extra)
     val offsets = ArrayList<Long>(node.extra)
 
     init {
-        raf.seek(node.offset)
+        raf.reposition(buffer, node.offset)
 
         for(n in 0 until node.extra) {
-            val chunkSize = raf.readIntLe()
-            val name = ByteArray(raf.readUnsignedByte())
-            raf.read(name)
+            val chunkSize = buffer.readIntLe()
+            val name = buffer.readByteArray(buffer.readByte().toLong())
             names.add(n, String(name))
-            offsets.add(n, raf.filePointer)
-            raf.skipBytes(chunkSize)
+            offsets.add(n, raf.position(buffer))
+            buffer.skip(chunkSize.toLong())
         }
     }
 
     private fun getSpriteDimensions(index: Int): Pair<Int, Int> {
-        raf.seek(offsets[index])
+        raf.reposition(buffer, offsets[index])
 
-        val sections = raf.readIntLe()
-        val three = raf.readByte()
-        val ox = raf.readShortLe()
-        val oy = raf.readShortLe()
-        val ow = raf.readShortLe()
-        val oh = raf.readShortLe()
+        val sections = buffer.readIntLe()
+        val three = buffer.readByte()
+        val ox = buffer.readShortLe()
+        val oy = buffer.readShortLe()
+        val ow = buffer.readShortLe()
+        val oh = buffer.readShortLe()
         return Pair(ox+ow, oy+oh)
     }
 
-    private fun buildSprite(index: Int): BufferedImage {
-        raf.seek(offsets[index])
+    private fun buildSprite(index: Int): Sprite {
+        raf.reposition(buffer, offsets[index])
 
-        val sections = raf.readIntLe()
-        val three = raf.readByte()
-        val ox = raf.readShortLe()
-        val oy = raf.readShortLe()
-        val ow = raf.readShortLe()
-        val oh = raf.readShortLe()
-        val currentSprite = BufferedImage(ox+ow, oy+oh, BufferedImage.TYPE_INT_ARGB)
-        val raster = currentSprite.raster
+        val sections = buffer.readIntLe()
+        val three = buffer.readByte()
+        val ox = buffer.readShortLe()
+        val oy = buffer.readShortLe()
+        val ow = buffer.readShortLe()
+        val oh = buffer.readShortLe()
+        val width = (ox+ow)
+        val height = (oy+oh)
+        val currentSprite = IntArray(width * height * 4)
         var currentSheet: ImageLineSetDefault<ImageLineInt>? = null
-        var sheetMode = raf.readUnsignedByte()
+        var sheetMode = buffer.readByte().toInt()
         var name: ByteArray
         while(sheetMode != 0) {
             when(sheetMode) {
                 1 -> {
-                    name = ByteArray(raf.readUnsignedByte())
-                    raf.read(name)
+                    name = buffer.readByteArray(buffer.readByte().toLong())
                     currentSheet = sheets.getSheet(String(name))
                 }
                 2 -> {
-                    val dx = raf.readShortLe()
-                    val dy = raf.readShortLe()
-                    val sx = raf.readShortLe()
-                    val sy = raf.readShortLe()
-                    val sw = raf.readShortLe()
-                    val sh = raf.readShortLe()
+                    val dx = buffer.readShortLe().toInt()
+                    val dy = buffer.readShortLe().toInt()
+                    val sx = buffer.readShortLe().toInt()
+                    val sy = buffer.readShortLe().toInt()
+                    val sw = buffer.readShortLe().toInt()
+                    val sh = buffer.readShortLe().toInt()
                     currentSheet?.getRect(sx, sy, sw, sh)?.forEachIndexed { y, line ->
-                        raster.setPixels(dx, dy+y, sw, 1, line)
+                        System.arraycopy(line, 0, currentSprite, ((dy+y)*width+dx)*4, sw*4)
                     }
                 }
                 else -> {
                     error("Unhandled mode byte. $sheetMode")
                 }
             }
-            sheetMode = raf.readUnsignedByte()
+            sheetMode = buffer.readByte().toInt()
         }
 
-        return currentSprite
+        return Sprite(width, height, currentSprite)
     }
 
     fun getSpriteDimensions(name: String?): Pair<Int, Int> {
@@ -90,7 +88,7 @@ class GrapFile(private val raf: RandomAccessFile, node: Node, private val sheets
         return getSpriteDimensions(names.indexOf(name))
     }
 
-    fun getSprite(name: String?): BufferedImage? {
+    fun getSprite(name: String?): Sprite? {
         if(name == null) {
             return null
         }
@@ -100,4 +98,6 @@ class GrapFile(private val raf: RandomAccessFile, node: Node, private val sheets
         }
         return buildSprite(names.indexOf(name))
     }
+
+    data class Sprite(val width: Int, val height:Int, val raster: IntArray)
 }
