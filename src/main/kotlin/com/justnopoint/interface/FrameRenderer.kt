@@ -7,7 +7,7 @@ interface FrameRenderer {
     fun getRenderableBoxes(frame: Frame, props: HashMap<String, Boolean>): List<RenderableBox>
 }
 
-data class RenderableSprite(val raster: IntArray, val width: Int, val height: Int, val axisX: Int, val axisY: Int,
+data class RenderableSprite(val image: TiledImage, val axisX: Int, val axisY: Int,
                             val scaleX: Double = 1.0, val scaleY: Double = 1.0, val rotation: Double = 0.0,
                             val opacity: Double = 1.0)
 data class RenderableText(val text: String, val positionX: Int, val positionY: Int)

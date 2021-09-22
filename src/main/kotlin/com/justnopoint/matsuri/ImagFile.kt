@@ -1,20 +1,19 @@
 package com.justnopoint.matsuri
 
-import ar.com.hjg.pngj.*
-import ar.com.hjg.pngj.chunks.PngChunkPLTE
-import ar.com.hjg.pngj.chunks.PngChunkTRNS
+import com.justnopoint.`interface`.ImageBank
 import okio.Buffer
 import okio.BufferedSource
 import okio.FileHandle
 import okio.buffer
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 // Imag chunks contain image data as PNGs.
 // This class also loads Pidx chunks, which contain indexed PNGs.
-class ImagFile {
+class ImagFile: KoinComponent {
+    val bank: ImageBank by inject()
     val names = ArrayList<String>()
-    val tileSheets = ArrayList<ImageLineSetDefault<ImageLineInt>>()
-    val palettes = HashMap<String, PngChunkPLTE>()
-    val trans = HashMap<String, PngChunkTRNS>()
+    val handles = ArrayList<Any>()
 
     fun load(handle: FileHandle, node: Node, ppal: PpalFile? = null) {
         val buffer = handle.source().buffer()
@@ -29,21 +28,14 @@ class ImagFile {
     fun loadPidx(source: BufferedSource, nSheets: Int, ppal: PpalFile) {
         for(n in 0 until nSheets) {
             val chunkSize = source.readIntLe()
-            var name = ByteArray(source.readByte().toInt())
-            source.read(name)
+            var name = source.readByteArray(source.readByte().toLong())
             val sheetName = String(name)
             names.add(sheetName)
-            name = ByteArray(source.readByte().toInt())
-            source.read(name)
+            name = source.readByteArray(source.readByte().toLong())
             val plte = ppal.getPalette(String(name))
             val header = source.readByteArray(source.readIntLe().toLong())
             val pngData = source.readByteArray(source.readIntLe().toLong())
-            val reader = generatePng(listOf(header, plte, pngData))
-            tileSheets.add(reader.readRows() as ImageLineSetDefault<ImageLineInt>)
-            if(reader.imgInfo.indexed) {
-                palettes[sheetName] = reader.chunksList.getById1(PngChunkPLTE.ID) as PngChunkPLTE
-                trans[sheetName] = reader.chunksList.getById1(PngChunkTRNS.ID) as PngChunkTRNS
-            }
+            handles.add(generatePng(listOf(header, plte, pngData)))
         }
     }
 
@@ -51,15 +43,14 @@ class ImagFile {
         for(n in 0 until nSheets) {
             val chunkSize = source.readIntLe()
             val name = source.readByteArray(source.readByte().toLong())
-            println(String(name))
-            names.add(n, String(name))
+            names.add(String(name))
             val header = source.readByteArray(source.readIntLe().toLong())
             val pngData = source.readByteArray(source.readIntLe().toLong())
-            tileSheets.add(n, generatePng(listOf(header, pngData)).readRows() as ImageLineSetDefault<ImageLineInt>)
+            handles.add(generatePng(listOf(header, pngData)))
         }
     }
 
-    private fun generatePng(chunks: List<ByteArray>): PngReader {
+    private fun generatePng(chunks: List<ByteArray>): Any {
         val buffer = Buffer()
         val baos = buffer.outputStream()
         baos.write(PNG)
@@ -67,18 +58,17 @@ class ImagFile {
             baos.write(it)
         }
         baos.write(IEND)
-        return PngReader(buffer.inputStream())
+        return bank.loadAndStoreImage(buffer.readByteArray(buffer.size))
     }
 
-    fun getSheet(index: Int): ImageLineSetDefault<ImageLineInt>? {
+    fun getSheet(index: Int): Any? {
         names.find { it.endsWith("$index") }?.let {
             return getSheet(it)
         }?: return null
     }
 
-    fun getSheet(name: String): ImageLineSetDefault<ImageLineInt> {
-        //println(name)
-        return tileSheets[names.indexOf(name)]
+    fun getSheet(name: String): Any {
+        return handles[names.indexOf(name)]
     }
 
     companion object {
@@ -87,17 +77,5 @@ class ImagFile {
             0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44,
             0xAE.toByte(), 0x42, 0x60, 0x82.toByte()
         )
-    }
-}
-
-fun ImageLineSetDefault<ImageLineInt>.getRect(sx: Int, sy: Int, sw: Int, sh: Int, plte: PngChunkPLTE? = null, trns: PngChunkTRNS? = null): List<IntArray> {
-    //println("$sx $sy $sw $sh")
-    return (sy until sy+sh).map { y ->
-        val scanline = if(plte != null) {
-            ImageLineHelper.palette2rgb(getImageLine(y), plte, trns, null)
-        } else {
-            getImageLine(y).scanline
-        }
-        scanline.sliceArray(sx * 4 until (sx + sw) * 4)
     }
 }

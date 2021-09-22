@@ -1,6 +1,5 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.FrameDisplay
 import com.justnopoint.`interface`.*
 import com.justnopoint.util.AnimHelper
 import com.justnopoint.util.getShortAt
@@ -11,6 +10,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
     private val grapFile: GrapFile
     private val frameFile: AnimFile
     val animFile: GanmFile
+    private val imagFile = ImagFile()
     private val grecFile: GrecFile
     private val thwpFile: ThwpFile
     private val gatkFile: GatkFile
@@ -19,13 +19,11 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
     init {
         val vsa = VsaFile(charFile)
 
+        vsa.getNode(VsaFile.IMAG)?.let { imagNode ->
+            imagFile.load(charFile, imagNode)
+        }?: error("Could not find IMAG node for vsa file")
         grapFile = vsa.getNode(VsaFile.GRAP)?.let { grapNode ->
-            vsa.getNode(VsaFile.IMAG)?.let { imagNode ->
-                val img = ImagFile().apply {
-                    load(charFile, imagNode)
-                }
-                GrapFile(charFile, grapNode, img)
-            }?: error("Could not find IMAG node for vsa file")
+            GrapFile(charFile, grapNode, imagFile)
         }?: error("Could not find GRAP node for vsa file")
         frameFile = vsa.getNode(VsaFile.ANIM)?.let { animNode ->
             AnimFile(charFile, animNode)
@@ -78,9 +76,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
                         val frameAxisY = (frameFile.getYAxis(bindFrame.refs[0])).toInt()
                         sprites.add(
                             RenderableSprite(
-                                raster = sprite.raster,
-                                width = sprite.width,
-                                height = sprite.height,
+                                image = sprite,
                                 axisX = it.axisx - (frameAxisX - anchor.first),
                                 axisY = it.axisy + (frameAxisY - anchor.second),
                                 scaleX = -1.0))
@@ -95,9 +91,7 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
                     val frameAxisY = (frameFile.getYAxis(ref))
                     sprites.add(
                         RenderableSprite(
-                            raster = sprite.raster,
-                            width = sprite.width,
-                            height = sprite.height,
+                            image = sprite,
                             axisX = frameAxisX.toInt(),
                             axisY = frameAxisY.toInt(),
                             rotation = frameFile.getRotation(ref).toDouble(),
@@ -108,14 +102,12 @@ class MatsuriFrameRenderer(charFile: FileHandle, effFile: FileHandle?, val hanyo
             }
         }
         frame.ganmFrame.getEffects().reversed().forEach { effect ->
-            val img = effect.toSprite(eff, hanyou)
+            val imgTile = effect.toTile(eff, hanyou)
             val scale = frame.ganmFrame.getEffectScale(effect)
             val rotation = frame.ganmFrame.getEffectRotation(effect)
             sprites.add(
                 RenderableSprite(
-                raster = img.raster,
-                    width = img.width,
-                    height = img.height,
+                    image = imgTile,
                     axisX = (effect.axisx * scale.first).toInt(),
                     axisY = (effect.axisy * scale.second).toInt(),
                     rotation = rotation,

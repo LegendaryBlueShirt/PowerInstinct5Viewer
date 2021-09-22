@@ -2,7 +2,6 @@ package com.justnopoint
 
 import com.justnopoint.`interface`.Frame
 import com.justnopoint.`interface`.FrameDataProvider
-import com.justnopoint.`interface`.RenderableSprite
 import javafx.embed.swing.SwingFXUtils
 import javafx.event.EventHandler
 import javafx.scene.canvas.Canvas
@@ -14,9 +13,11 @@ import javafx.scene.text.FontPosture
 import javafx.scene.text.FontWeight
 import javafx.scene.text.Text
 import javafx.stage.WindowEvent
-import java.awt.image.BufferedImage
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
-class ViewerWindow: Canvas() {
+class ViewerWindow: Canvas(), KoinComponent {
+    val bank by inject<PNGBank>()
     var currentX = 400
     var currentY = 450
     var currentZoom = 3.0
@@ -54,19 +55,20 @@ class ViewerWindow: Canvas() {
             g.translate(getAxisX().toDouble(), getAxisY().toDouble())
             g.scale(currentZoom, currentZoom)
             rendererProvider?.getFrameRenderer()?.getRenderableSprites(frame = it, props = props)?.forEach { renderable ->
+                val image = bank.tiledImageToFullImage(renderable.image)
                 g.save()
                 g.translate(renderable.axisX.toDouble(), renderable.axisY.toDouble())
                 g.rotate(renderable.rotation)
                 g.drawImage(
-                    SwingFXUtils.toFXImage(spriteToBufferedImage(renderable), null),
+                    SwingFXUtils.toFXImage(image, null),
                     0.0,
                     0.0,
-                    renderable.width.toDouble(),
-                    renderable.height.toDouble(),
+                    image.width.toDouble(),
+                    image.height.toDouble(),
                     0.0,
                     0.0,
-                    renderable.width * renderable.scaleX,
-                    renderable.height * renderable.scaleY
+                    image.width * renderable.scaleX,
+                    image.height * renderable.scaleY
                 )
                 g.restore()
             }
@@ -150,13 +152,6 @@ class ViewerWindow: Canvas() {
                 dragging = false
             }
         }
-    }
-
-    private fun spriteToBufferedImage(sprite: RenderableSprite): BufferedImage {
-        val buf = BufferedImage(sprite.width, sprite.height, BufferedImage.TYPE_INT_ARGB)
-        val raster = buf.raster
-        raster.setPixels(0, 0, sprite.width, sprite.height, sprite.raster)
-        return buf
     }
 
     private fun getMonospaceFonts(): List<String> {

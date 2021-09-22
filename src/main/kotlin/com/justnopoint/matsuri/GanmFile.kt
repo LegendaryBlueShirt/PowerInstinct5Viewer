@@ -1,5 +1,7 @@
 package com.justnopoint.matsuri
 
+import com.justnopoint.`interface`.Tile
+import com.justnopoint.`interface`.TiledImage
 import com.justnopoint.util.getShortAt
 import okio.FileHandle
 import okio.buffer
@@ -247,24 +249,11 @@ fun GanmFrame.getVelY(): Int? {
     }
 }
 
-fun Effect.toSprite(sheets: ImagFile, hanyou: ImagFile): GrapFile.Sprite {
+fun Effect.toTile(sheets: ImagFile, hanyou: ImagFile): TiledImage {
     val sourceIndex = source-1
     println(sourceIndex)
     // This works for Annie but probably needs tweaking, or we're missing entire sheets
-    val sheet = sheets.getSheet(sourceIndex)?:hanyou.getSheet(sourceIndex-4)?:return GrapFile.Sprite(0, 0, IntArray(0))
-    val raster = IntArray(sw*sh*4)
-    val plte = if(sheet.getImageLine(0).imgInfo.indexed) {
-        sheets.palettes[sheets.names.find { it.endsWith("$sourceIndex") }]!!
-    } else {
-        null
-    }
-    val trns = if(sheet.getImageLine(0).imgInfo.indexed) {
-        sheets.trans[sheets.names.find { it.endsWith("$sourceIndex") }]!!
-    } else {
-        null
-    }
-    sheet.getRect(sx, sy, sw, sh, plte, trns).forEachIndexed { y, line ->
-        System.arraycopy(line, 0, raster, y*sw*4, line.size)
-    }
-    return GrapFile.Sprite(sw, sh, raster)
+    val sheetHandle = sheets.getSheet(sourceIndex)?:hanyou.getSheet(sourceIndex-4)?:return TiledImage(0, 0, emptyList(), emptyList())
+    val tile = Tile(sheetHandle, sx, sy, sw, sh)
+    return TiledImage(sw, sh, listOf(tile), listOf(Pair(0,0)))
 }

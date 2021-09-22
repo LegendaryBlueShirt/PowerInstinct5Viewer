@@ -1,13 +1,13 @@
 package com.justnopoint.matsuri
 
-import ar.com.hjg.pngj.ImageLineInt
-import ar.com.hjg.pngj.ImageLineSetDefault
+import com.justnopoint.`interface`.Tile
+import com.justnopoint.`interface`.TiledImage
 import okio.FileHandle
 import okio.buffer
 
 // For tiled images, Grap chunks contain the information to
 // piece them together from sheets.
-class GrapFile(private val raf: FileHandle, node: Node, private val sheets: ImagFile) {
+class GrapFile(private val raf: FileHandle, node: Node, val sheets: ImagFile) {
     val buffer = raf.source().buffer()
     val names = ArrayList<String>(node.extra)
     val offsets = ArrayList<Long>(node.extra)
@@ -36,7 +36,7 @@ class GrapFile(private val raf: FileHandle, node: Node, private val sheets: Imag
         return Pair(ox+ow, oy+oh)
     }
 
-    private fun buildSprite(index: Int): Sprite {
+    private fun buildSprite(index: Int): TiledImage {
         raf.reposition(buffer, offsets[index])
 
         val sections = buffer.readIntLe()
@@ -47,8 +47,9 @@ class GrapFile(private val raf: FileHandle, node: Node, private val sheets: Imag
         val oh = buffer.readShortLe()
         val width = (ox+ow)
         val height = (oy+oh)
-        val currentSprite = IntArray(width * height * 4)
-        var currentSheet: ImageLineSetDefault<ImageLineInt>? = null
+        val currentSprite = mutableListOf<Tile>()
+        val coordinates = mutableListOf<Pair<Int, Int>>()
+        lateinit var currentSheet: Any
         var sheetMode = buffer.readByte().toInt()
         var name: ByteArray
         while(sheetMode != 0) {
@@ -64,9 +65,8 @@ class GrapFile(private val raf: FileHandle, node: Node, private val sheets: Imag
                     val sy = buffer.readShortLe().toInt()
                     val sw = buffer.readShortLe().toInt()
                     val sh = buffer.readShortLe().toInt()
-                    currentSheet?.getRect(sx, sy, sw, sh)?.forEachIndexed { y, line ->
-                        System.arraycopy(line, 0, currentSprite, ((dy+y)*width+dx)*4, sw*4)
-                    }
+                    currentSprite.add(Tile(currentSheet, sx, sy, sw, sh))
+                    coordinates.add(Pair(dx,dy))
                 }
                 else -> {
                     error("Unhandled mode byte. $sheetMode")
@@ -75,7 +75,7 @@ class GrapFile(private val raf: FileHandle, node: Node, private val sheets: Imag
             sheetMode = buffer.readByte().toInt()
         }
 
-        return Sprite(width, height, currentSprite)
+        return TiledImage(width, height, currentSprite, coordinates)
     }
 
     fun getSpriteDimensions(name: String?): Pair<Int, Int> {
@@ -88,16 +88,13 @@ class GrapFile(private val raf: FileHandle, node: Node, private val sheets: Imag
         return getSpriteDimensions(names.indexOf(name))
     }
 
-    fun getSprite(name: String?): Sprite? {
+    fun getSprite(name: String?): TiledImage? {
         if(name == null) {
             return null
         }
         if(!names.contains(name)) {
-            //println("Sprite $name not found.")
             return null
         }
         return buildSprite(names.indexOf(name))
     }
-
-    data class Sprite(val width: Int, val height:Int, val raster: IntArray)
 }
