@@ -1,4 +1,4 @@
-package com.justnopoint.`interface`
+package com.justnopoint.interfaces
 
 abstract class Sequence {
     abstract fun getName(): String

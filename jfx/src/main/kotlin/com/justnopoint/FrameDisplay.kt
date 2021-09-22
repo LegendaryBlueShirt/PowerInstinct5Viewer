@@ -1,6 +1,6 @@
 package com.justnopoint
 
-import com.justnopoint.`interface`.ImageBank
+import com.justnopoint.interfaces.ImageBank
 import javafx.application.Application
 import javafx.fxml.FXMLLoader
 import javafx.stage.Stage

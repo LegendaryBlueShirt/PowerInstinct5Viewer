@@ -1,6 +1,6 @@
 package com.justnopoint.util
 
-import com.justnopoint.`interface`.Sequence
+import com.justnopoint.interfaces.Sequence
 
 object AnimHelper {
 

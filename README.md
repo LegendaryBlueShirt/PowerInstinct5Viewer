@@ -9,12 +9,12 @@ JDK11 or equivalent
 
 MacOs/Unix/Linux
 ```bash
-./gradlew run
+./gradlew jfx:run
 ```
 
 Windows Command Line
 ```
-gradlew run
+gradlew jfx:run
 ```
 
 ## Using the Viewer

@@ -6,9 +6,9 @@ import ar.com.hjg.pngj.ImageLineSetDefault
 import ar.com.hjg.pngj.PngReader
 import ar.com.hjg.pngj.chunks.PngChunkPLTE
 import ar.com.hjg.pngj.chunks.PngChunkTRNS
-import com.justnopoint.`interface`.ImageBank
-import com.justnopoint.`interface`.Tile
-import com.justnopoint.`interface`.TiledImage
+import com.justnopoint.interfaces.ImageBank
+import com.justnopoint.interfaces.Tile
+import com.justnopoint.interfaces.TiledImage
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 

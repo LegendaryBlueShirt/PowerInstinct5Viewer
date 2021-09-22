@@ -1,4 +1,4 @@
-package com.justnopoint.`interface`
+package com.justnopoint.interfaces
 
 interface ImageBank {
     fun loadAndStoreImage(data: ByteArray): Any

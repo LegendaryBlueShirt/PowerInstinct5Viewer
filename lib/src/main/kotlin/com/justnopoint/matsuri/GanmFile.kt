@@ -1,7 +1,7 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.`interface`.Tile
-import com.justnopoint.`interface`.TiledImage
+import com.justnopoint.interfaces.Tile
+import com.justnopoint.interfaces.TiledImage
 import com.justnopoint.util.getShortAt
 import okio.FileHandle
 import okio.buffer

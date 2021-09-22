@@ -1,2 +1,4 @@
 rootProject.name = 'PowerInstinct5Viewer'
 
+include("lib")
+include("jfx")

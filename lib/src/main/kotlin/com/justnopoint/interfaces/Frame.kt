@@ -1,4 +1,4 @@
-package com.justnopoint.`interface`
+package com.justnopoint.interfaces
 
 interface Frame {
     fun getSequence(): Sequence

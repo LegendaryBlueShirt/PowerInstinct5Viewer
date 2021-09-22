@@ -1,12 +1,12 @@
 package com.justnopoint
 
-import com.justnopoint.`interface`.Character
-import com.justnopoint.`interface`.FrameDataProvider
-import com.justnopoint.`interface`.FrameRenderer
-import com.justnopoint.`interface`.Properties
-import com.justnopoint.`interface`.Sequence
+import com.justnopoint.interfaces.FrameDataProvider
+import com.justnopoint.interfaces.FrameRenderer
 import com.justnopoint.matsuri.MatsuriFrameDataProvider
 import com.justnopoint.util.AnimHelper
+import com.justnopoint.interfaces.Sequence
+import com.justnopoint.interfaces.Character
+import com.justnopoint.interfaces.Properties
 import javafx.animation.AnimationTimer
 import javafx.application.Platform
 import javafx.collections.FXCollections

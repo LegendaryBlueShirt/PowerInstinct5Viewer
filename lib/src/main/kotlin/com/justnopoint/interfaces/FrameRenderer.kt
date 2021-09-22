@@ -1,4 +1,4 @@
-package com.justnopoint.`interface`
+package com.justnopoint.interfaces
 
 interface FrameRenderer {
     fun getProperties(): List<String>

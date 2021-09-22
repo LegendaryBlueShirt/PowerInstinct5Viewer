@@ -1,4 +1,4 @@
-package com.justnopoint.`interface`
+package com.justnopoint.interfaces
 
 abstract class Character {
     abstract fun getFullName(): String

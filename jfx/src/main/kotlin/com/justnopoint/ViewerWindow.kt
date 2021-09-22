@@ -1,7 +1,7 @@
 package com.justnopoint
 
-import com.justnopoint.`interface`.Frame
-import com.justnopoint.`interface`.FrameDataProvider
+import com.justnopoint.interfaces.Frame
+import com.justnopoint.interfaces.FrameDataProvider
 import javafx.embed.swing.SwingFXUtils
 import javafx.event.EventHandler
 import javafx.scene.canvas.Canvas

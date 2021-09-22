@@ -1,6 +1,6 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.`interface`.*
+import com.justnopoint.interfaces.*
 import com.justnopoint.util.AnimHelper
 import okio.FileSystem
 import okio.Path

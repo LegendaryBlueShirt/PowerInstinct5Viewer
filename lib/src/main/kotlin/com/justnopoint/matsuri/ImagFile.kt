@@ -1,6 +1,6 @@
 package com.justnopoint.matsuri
 
-import com.justnopoint.`interface`.ImageBank
+import com.justnopoint.interfaces.ImageBank
 import okio.Buffer
 import okio.BufferedSource
 import okio.FileHandle
